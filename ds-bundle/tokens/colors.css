@@ -1,0 +1,29 @@
+/* JGDzine brand color tokens — extracted from jgdzine.com and the JG logo */
+:root {
+  /* Core neutrals */
+  --jg-ink: #1d1b1b;          /* near-black — headlines, hero overlays, dark panels */
+  --jg-charcoal: #404143;     /* dark UI surfaces, secondary dark */
+  --jg-gray-600: #4d4d4e;     /* muted text on light */
+  --jg-gray-300: #a7a39e;     /* borders, dividers, placeholder text */
+  --jg-surface: #e7e7e9;      /* page section background */
+  --jg-surface-bright: #f4f3f3; /* cards, light panels */
+  --jg-white: #ffffff;
+
+  /* Accents */
+  --jg-cyan: #00bdff;         /* signature accent — diamond motif, links, highlights */
+  --jg-blue: #2484c6;         /* logo blue — gradient anchor */
+  --jg-blue-light: #95c1de;   /* logo gradient mid-stop */
+  --jg-orange: #d7481e;       /* CTA / action color (send button) */
+
+  /* Logo gradient (top → bottom as in jg.svg) */
+  --jg-logo-gradient: linear-gradient(180deg, #2484c6 0%, #6dabd5 35%, #b6d2e5 65%, #f1f2f2 100%);
+
+  /* Semantic aliases */
+  --jg-bg: var(--jg-surface);
+  --jg-bg-dark: var(--jg-ink);
+  --jg-text: var(--jg-ink);
+  --jg-text-muted: var(--jg-gray-600);
+  --jg-text-on-dark: var(--jg-surface-bright);
+  --jg-accent: var(--jg-cyan);
+  --jg-cta: var(--jg-orange);
+}

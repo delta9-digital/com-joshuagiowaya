@@ -1,0 +1,34 @@
+<!-- @dsCard group="Colors" name="Palette" subtitle="Neutrals, cyan accent, logo blue, CTA orange" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../../styles.css">
+<style>
+  body { padding: 2rem; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+  .sw { border-radius: 2px; overflow: hidden; border: 1px solid var(--jg-gray-300); }
+  .chip { height: 72px; }
+  .meta { padding: 0.5rem 0.6rem; background: var(--jg-white); font-size: var(--jg-text-xs); }
+  .meta b { display: block; font-weight: 600; }
+  .grad { grid-column: 1 / -1; }
+  .grad .chip { background: var(--jg-logo-gradient); height: 48px; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:var(--jg-ink)"></div><div class="meta"><b>--jg-ink</b>#1d1b1b</div></div>
+    <div class="sw"><div class="chip" style="background:var(--jg-charcoal)"></div><div class="meta"><b>--jg-charcoal</b>#404143</div></div>
+    <div class="sw"><div class="chip" style="background:var(--jg-gray-600)"></div><div class="meta"><b>--jg-gray-600</b>#4d4d4e</div></div>
+    <div class="sw"><div class="chip" style="background:var(--jg-gray-300)"></div><div class="meta"><b>--jg-gray-300</b>#a7a39e</div></div>
+    <div class="sw"><div class="chip" style="background:var(--jg-surface)"></div><div class="meta"><b>--jg-surface</b>#e7e7e9</div></div>
+    <div class="sw"><div class="chip" style="background:var(--jg-surface-bright)"></div><div class="meta"><b>--jg-surface-bright</b>#f4f3f3</div></div>
+    <div class="sw"><div class="chip" style="background:var(--jg-cyan)"></div><div class="meta"><b>--jg-cyan</b>#00bdff</div></div>
+    <div class="sw"><div class="chip" style="background:var(--jg-blue)"></div><div class="meta"><b>--jg-blue</b>#2484c6</div></div>
+    <div class="sw"><div class="chip" style="background:var(--jg-orange)"></div><div class="meta"><b>--jg-orange</b>#d7481e</div></div>
+    <div class="sw"><div class="chip" style="background:var(--jg-blue-light)"></div><div class="meta"><b>--jg-blue-light</b>#95c1de</div></div>
+    <div class="sw"><div class="chip" style="background:var(--jg-white)"></div><div class="meta"><b>--jg-white</b>#ffffff</div></div>
+    <div class="sw grad"><div class="chip"></div><div class="meta"><b>--jg-logo-gradient</b>#2484c6 → #f1f2f2</div></div>
+  </div>
+</body>
+</html>

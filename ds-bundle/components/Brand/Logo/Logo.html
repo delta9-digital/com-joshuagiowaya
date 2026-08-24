@@ -1,0 +1,21 @@
+<!-- @dsCard group="Brand" name="JG Logo" subtitle="Color on light / white on dark" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../../styles.css">
+<style>
+  .wrap { display: grid; grid-template-columns: 1fr 1fr; min-height: 320px; }
+  .cell { display: flex; align-items: center; justify-content: center; padding: 2.5rem; }
+  .cell img { height: 180px; width: auto; }
+  .light { background: var(--jg-surface-bright); }
+  .dark { background: var(--jg-ink); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="cell light"><img src="jg.svg" alt="JG logo, color"></div>
+    <div class="cell dark"><img src="jg-wht.svg" alt="JG logo, white"></div>
+  </div>
+</body>
+</html>

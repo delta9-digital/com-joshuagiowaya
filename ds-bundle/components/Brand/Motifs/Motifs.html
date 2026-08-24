@@ -1,0 +1,33 @@
+<!-- @dsCard group="Brand" name="Motifs & buttons" subtitle="Diamond motif, dark/CTA buttons" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../../styles.css">
+<style>
+  body { padding: 3rem 2.5rem; display: grid; gap: 2.5rem; }
+  .row { display: flex; gap: 2.5rem; align-items: center; flex-wrap: wrap; }
+  .label { font-family: var(--jg-font-body); font-size: var(--jg-text-xs); color: var(--jg-text-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .jg-diamond .q { font-family: var(--jg-font-heading); font-size: 1.4rem; }
+  .jg-diamond--solid { width: 7rem; height: 7rem; }
+  .jg-diamond--solid .msg { font-family: var(--jg-font-heading); font-size: 0.65rem; text-align: center; letter-spacing: 0.06em; }
+</style>
+</head>
+<body>
+  <div>
+    <div class="label" style="margin-bottom:1.5rem">Diamond motif — outlined cyan &amp; solid ink</div>
+    <div class="row">
+      <span class="jg-diamond"><span class="q">Q2</span></span>
+      <span class="jg-diamond"><span class="q">Q7</span></span>
+      <span class="jg-diamond jg-diamond--solid"><span class="msg">What excites<br>you about<br>coding?</span></span>
+    </div>
+  </div>
+  <div>
+    <div class="label" style="margin-bottom:1rem">Buttons</div>
+    <div class="row">
+      <button class="jg-btn">➤ Send message</button>
+      <button class="jg-btn jg-btn--cta">View project</button>
+    </div>
+  </div>
+</body>
+</html>

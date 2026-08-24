@@ -1,0 +1,23 @@
+/* JGDzine typography tokens */
+:root {
+  /* Families (all loaded via @font-face in styles.css) */
+  --jg-font-display: "Blackout Sunrise", "Norwester", Impact, sans-serif;      /* hero / biggest statements — distressed, filled counters */
+  --jg-font-display-alt: "Blackout Midnight", "Norwester", Impact, sans-serif; /* alternate distressed cut */
+  --jg-font-display-open: "Blackout 2AM", "Norwester", Impact, sans-serif;     /* lighter distressed cut, open counters */
+  --jg-font-heading: "Norwester", "Arial Narrow", sans-serif;                  /* section headings, labels, nav — clean condensed caps */
+  --jg-font-body: "Open Sans", system-ui, sans-serif;                          /* body copy, UI text */
+
+  /* Scale */
+  --jg-text-xs: 0.75rem;
+  --jg-text-sm: 0.875rem;
+  --jg-text-base: 1rem;
+  --jg-text-lg: 1.25rem;
+  --jg-text-xl: 1.75rem;
+  --jg-text-2xl: 2.5rem;
+  --jg-text-hero: clamp(3rem, 8vw, 6rem);
+
+  /* Display type is always uppercase with tight leading */
+  --jg-display-leading: 0.9;
+  --jg-heading-tracking: 0.06em;
+  --jg-body-leading: 1.65;
+}

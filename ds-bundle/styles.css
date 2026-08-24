@@ -1,0 +1,115 @@
+/* JGDzine Design System — entry stylesheet.
+   Rendered designs receive this file's @import closure: tokens + fonts + base rules. */
+@import "tokens/colors.css";
+@import "tokens/typography.css";
+
+/* ---- Brand fonts ---- */
+@font-face {
+  font-family: "Norwester";
+  src: url("fonts/Norwester.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Blackout Sunrise";
+  src: url("fonts/BlackoutSunrise.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Blackout Midnight";
+  src: url("fonts/BlackoutMidnight.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Blackout 2AM";
+  src: url("fonts/Blackout2AM.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Open Sans";
+  src: url("fonts/OpenSans-Variable.woff2") format("woff2");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Open Sans";
+  src: url("fonts/OpenSans-Italic-Variable.woff2") format("woff2");
+  font-weight: 300 800;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ---- Base ---- */
+body {
+  font-family: var(--jg-font-body);
+  font-size: var(--jg-text-base);
+  line-height: var(--jg-body-leading);
+  color: var(--jg-text);
+  background: var(--jg-bg);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Type utilities ---- */
+.jg-display {
+  font-family: var(--jg-font-display);
+  text-transform: uppercase;
+  line-height: var(--jg-display-leading);
+  letter-spacing: 0.01em;
+  font-weight: 400;
+}
+.jg-display--midnight { font-family: var(--jg-font-display-alt); }
+.jg-display--2am { font-family: var(--jg-font-display-open); }
+.jg-heading {
+  font-family: var(--jg-font-heading);
+  text-transform: uppercase;
+  letter-spacing: var(--jg-heading-tracking);
+  line-height: 1.1;
+  font-weight: 400;
+}
+
+/* ---- Signature diamond motif (45°-rotated square) ---- */
+.jg-diamond {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 5rem;
+  height: 5rem;
+  transform: rotate(45deg);
+  border: 2px solid var(--jg-cyan);
+  color: var(--jg-cyan);
+}
+.jg-diamond > * { transform: rotate(-45deg); }
+.jg-diamond--solid {
+  background: var(--jg-ink);
+  border-color: var(--jg-ink);
+  color: var(--jg-white);
+}
+
+/* ---- CTA button ---- */
+.jg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--jg-font-heading);
+  text-transform: uppercase;
+  letter-spacing: var(--jg-heading-tracking);
+  font-size: var(--jg-text-sm);
+  color: var(--jg-white);
+  background: var(--jg-ink);
+  border: none;
+  border-bottom: 3px solid var(--jg-orange);
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+}
+.jg-btn:hover { background: var(--jg-charcoal); }
+.jg-btn--cta { background: var(--jg-orange); border-bottom-color: var(--jg-ink); }
+.jg-btn--cta:hover { background: #b93c17; }
