@@ -561,3 +561,34 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .rs-hud__score.is-bump { animation: none; }
 }
+
+/* ---------- preview label over a hovered / tapped paper ball ---------- */
+.rs-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.75rem 0.45rem 0.65rem;
+  background: var(--jg-ink);
+  border: 1px solid var(--jg-charcoal);
+  border-left: 3px solid var(--jg-cyan);
+  color: var(--jg-white);
+  font-family: var(--jg-font-heading);
+  text-transform: uppercase;
+  letter-spacing: var(--jg-heading-tracking);
+  font-size: var(--jg-text-sm);
+  line-height: 1.1;
+  white-space: nowrap;
+  pointer-events: none;
+  will-change: transform;
+}
+.rs-tip[hidden] {
+  display: none;
+}
+.rs-tip__meta {
+  font-size: var(--jg-text-xs);
+  color: var(--jg-gray-300);
+}

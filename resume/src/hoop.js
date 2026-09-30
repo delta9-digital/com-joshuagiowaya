@@ -21,7 +21,7 @@ const BOARD_T = 0.04;
  * @param {number} o.ballRadius   physics radius of a crumpled sheet
  * @param {CANNON.Material} o.paperMaterial
  * @param {{board:string, ink:string, accent:string, rim:string}} o.colors
- * @returns {{ group, rimRadius, center:{x,y,z}, place(x:number):void }}
+ * @returns {{ group, rimRadius, center:{x,y,z}, place(x:number):void, arm(on:boolean):void }}
  */
 export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, colors }) {
   const R = ballRadius * 1.9; // rim inner radius
@@ -108,16 +108,26 @@ export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, 
   }
 
   const center = { x: 0, y, z: rimZ };
+  let armed = false;
+
+  // Colliders sit at the hoop while armed, and far below the floor while the hoop is away.
+  function arm(on) {
+    armed = on;
+    const x = center.x;
+    const yy = on ? y : -100;
+    boardBody.position.set(x, yy + boardY, boardZ);
+    for (const b of rimBodies) {
+      b.position.set(x + (R + COLLIDER_R) * Math.cos(b.rimAngle), yy, rimZ + (R + COLLIDER_R) * Math.sin(b.rimAngle));
+    }
+  }
 
   function place(x) {
     center.x = x;
     group.position.x = x;
-    boardBody.position.set(x, y + boardY, boardZ);
-    for (const b of rimBodies) {
-      b.position.set(x + (R + COLLIDER_R) * Math.cos(b.rimAngle), y, rimZ + (R + COLLIDER_R) * Math.sin(b.rimAngle));
-    }
+    arm(armed);
   }
   place(0);
+  arm(false);
 
-  return { group, rimRadius: R, center, place };
+  return { group, rimRadius: R, center, place, arm };
 }

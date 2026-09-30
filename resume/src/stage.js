@@ -8,9 +8,12 @@
 //          the last crumpled sheet again and the unread one vanishes. Only read sheets are ever on
 //          the floor. Next on the last sheet crumples it too, leaving nothing open ("finished").
 // Pages turn with Back/Next, ▲/▼ buttons, arrow keys, the mouse wheel, or a swipe.
+// Hovering a crumpled page highlights it and shows which page it is; on touch, the first tap
+// previews and a second tap opens.
 // data-sheet-headers="first" draws the dark header band only on a section's first sheet.
-// data-hoop="on" hangs a basketball hoop on the back wall: flicked balls arc, and one that drops
-// through the rim counts as a basket in the HUD.
+// data-hoop="on" adds a basketball hoop: once every page has been crumpled it drops down onto the
+// middle of the back wall, flicked balls arc, and one that falls through the rim counts as a
+// basket in the HUD. Reopening a page lifts the hoop away again.
 // Scene, VAT playback, and physics are adapted from item-develop/paper-crumple-demo (MIT).
 // ==================================================
 import * as THREE from "three";
@@ -86,6 +89,7 @@ const FLICK_WINDOW_MS = 120; // pointer samples used to measure a flick
 const SHOT_MIN_SPEED = 0.9;
 const SHEET_DIM = 0.12;
 const HOOP_Y = FLOOR_VISUAL_Y + 0.85;
+const HOOP_AWAY_Y = HOOP_Y + 2.8; // parked above the top of the view
 const CLICK_DRAG_THRESHOLD_PX = 6;
 const SWIPE_THRESHOLD_PX = 60;
 const BOUNDS_PULL = 3.0;
@@ -101,7 +105,12 @@ const papers = [];
 let activePaper = null;
 let current = -1; // index of the open page; pages.length once the last page has been crumpled
 let pendingArrival = null; // read mode: { index, cancel } while waiting for a tossed sheet to land
+let hoverPaper = null; // ball under the pointer (or tapped once on touch)
+let tipEl = null;
+const HOVER_GLOW = new THREE.Color(token("--jg-cyan", "#00bdff"));
 let hoop = null;
+let hoopShown = false; // requested state; the mesh eases toward it in updateHoop()
+let hoopArmed = false; // colliders are live only once it has settled into place
 const score = { made: 0, shots: 0 };
 let throwCounter = 0;
 let pointerState = null;
@@ -260,6 +269,15 @@ function buildScene() {
     );
   }
 
+  // Preview label for the ball under the pointer
+  tipEl = document.createElement("div");
+  tipEl.className = "rs-tip";
+  tipEl.setAttribute("aria-hidden", "true");
+  tipEl.hidden = true;
+  tipEl.innerHTML = '<span class="rs-tip__title"></span><span class="rs-tip__meta"></span>';
+  viewport.appendChild(tipEl);
+  renderer.domElement.addEventListener("pointerleave", () => setHover(null));
+
   resize();
   new ResizeObserver(resize).observe(container);
 
@@ -323,18 +341,46 @@ function buildHoop() {
       rim: token("--jg-orange", "#d7481e"),
     },
   });
+  hoop.group.visible = false;
+  hoop.group.position.y = HOOP_AWAY_Y;
   placeHoop();
 }
 
-// Right of centre so the open sheet doesn't hide it; follows the stage width on resize.
 function placeHoop() {
-  if (hoop) hoop.place(stageBounds.maxX * 0.7);
+  if (hoop) hoop.place(0); // centre of the back wall
+}
+
+// Drops the hoop in once the last page has been read; lifts it away when a page is reopened.
+function setHoopShown(on) {
+  if (!hoop || on === hoopShown) return;
+  hoopShown = on;
+  if (on) {
+    hoop.group.visible = true;
+  } else {
+    hoopArmed = false;
+    hoop.arm(false);
+  }
+}
+
+function updateHoop(dt) {
+  if (!hoop || !hoop.group.visible) return;
+  const target = hoopShown ? HOOP_Y : HOOP_AWAY_Y;
+  const g = hoop.group;
+  g.position.y = reduceMotion ? target : THREE.MathUtils.damp(g.position.y, target, 5, dt);
+  const settled = Math.abs(g.position.y - target) < 0.005;
+  if (settled) g.position.y = target;
+  if (hoopShown && settled && !hoopArmed) {
+    hoopArmed = true;
+    hoop.arm(true);
+  } else if (!hoopShown && settled) {
+    g.visible = false;
+  }
 }
 
 // A basket: a shot ball's centre crosses the plane just under the rim, heading down, inside the
 // rim. Checked every frame against the previous position so a fast ball can't slip between steps.
 function checkBaskets() {
-  if (!hoop) return;
+  if (!hoop || !hoopArmed) return;
   const gateY = hoop.center.y - hoop.rimRadius * 0.6;
   const inside = (hoop.rimRadius * 0.95) ** 2;
   for (const p of papers) {
@@ -382,7 +428,7 @@ function aimingAtHoop() {
 }
 
 function updateSheetDim(dt) {
-  if (!HOOP || !activePaper || activePaper.state !== "open") return;
+  if (!HOOP || !hoopShown || !activePaper || activePaper.state !== "open") return;
   const mat = activePaper.material;
   const target = aimingAtHoop() ? SHEET_DIM : 1;
   mat.opacity = THREE.MathUtils.damp(mat.opacity, target, 8, dt);
@@ -809,6 +855,8 @@ function goTo(index) {
   if (MODE === "read") goToRead(index);
   else goToPile(index);
   current = index;
+  setHover(null);
+  setHoopShown(index >= pages.length);
   updateControls(true);
 }
 
@@ -988,7 +1036,7 @@ function updateControls(announce) {
   const page = finished ? null : pages[Math.max(current, 0)];
   const pad = (n) => String(n).padStart(2, "0");
   const counter = `${pad(finished ? total : Math.max(current, 0) + 1)} / ${pad(total)}`;
-  const label = finished ? "All pages read" : page ? pageLabel(page) : "";
+  const label = finished ? (HOOP ? "All pages read · shoot!" : "All pages read") : page ? pageLabel(page) : "";
   counterEls.forEach((el) => (el.textContent = counter));
   labelEls.forEach((el) => (el.textContent = label));
   prevBtns.forEach((b) => (b.disabled = current <= 0));
@@ -1001,7 +1049,9 @@ function updateControls(announce) {
   }
   if (!announce) return;
   statusEl.textContent = finished
-    ? `All ${total} pages read. Use Back or click a crumpled page to reopen one.`
+    ? HOOP
+      ? `All ${total} pages read. A hoop has dropped onto the back wall — flick a crumpled page at it. Use Back or click a page to reopen one.`
+      : `All ${total} pages read. Use Back or click a crumpled page to reopen one.`
     : page
       ? `Page ${current + 1} of ${total}: ${pageLabel(page)}`
       : "";
@@ -1097,16 +1147,64 @@ function updateHoverCursor(e) {
   if (!animData) return;
   const p = pickPaper(e);
   renderer.domElement.style.cursor = p ? (isGrabbable(p) ? "grab" : "pointer") : "";
+  if (e.pointerType !== "touch") setHover(p && isGrabbable(p) ? p : null);
+}
+
+// ---------- hover / tap preview ----------
+function setHover(paper) {
+  if (paper === hoverPaper) return;
+  if (hoverPaper) hoverPaper.material.emissive.set(0x000000);
+  hoverPaper = paper;
+  if (!paper) {
+    tipEl.hidden = true;
+    return;
+  }
+  paper.material.emissive.copy(HOVER_GLOW);
+  paper.material.emissiveIntensity = 0.35;
+  const page = paper.page;
+  tipEl.querySelector(".rs-tip__title").textContent = page.section.title;
+  tipEl.querySelector(".rs-tip__meta").textContent =
+    `Page ${page.index + 1} / ${pages.length}` + (page.first ? "" : " · continued");
+  tipEl.hidden = false;
+  updateTip();
+}
+
+const _tipPos = new THREE.Vector3();
+function updateTip() {
+  if (!hoverPaper) return;
+  if (!isGrabbable(hoverPaper)) {
+    setHover(null);
+    return;
+  }
+  _tipPos.copy(hoverPaper.mesh.position).project(camera);
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  const x = ((_tipPos.x + 1) / 2) * w;
+  const y = ((1 - _tipPos.y) / 2) * h;
+  const lift = collisionRadius * 2.2 * (h / 2) / (Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.distanceTo(hoverPaper.mesh.position));
+  tipEl.style.transform = `translate(-50%, -100%) translate(${x.toFixed(1)}px, ${(y - lift).toFixed(1)}px)`;
 }
 
 function handleClick(e) {
   const p = pickPaper(e);
-  if (!p || p.state === "vanishing") return;
-  if (p === activePaper) next();
-  else goTo(p.page.index);
+  if (!p || p.state === "vanishing") {
+    setHover(null);
+    return;
+  }
+  if (p === activePaper) {
+    next();
+    return;
+  }
+  // Touch has no hover: the first tap previews the page, a second tap on it opens it.
+  if (e.pointerType === "touch" && isGrabbable(p) && hoverPaper !== p) {
+    setHover(p);
+    return;
+  }
+  goTo(p.page.index);
 }
 
 function beginGrab(paper, e) {
+  setHover(null);
   pointerState.grabbing = true;
   paper.state = "grabbed";
   paper.time = 0;
@@ -1178,7 +1276,7 @@ function releaseGrab(paper, withThrow) {
   paper.state = "rolling";
   paper.time = 0;
   paper.throw = { settleTimer: 0 };
-  if (HOOP && withThrow && speed >= SHOT_MIN_SPEED) markShot(paper);
+  if (HOOP && hoopArmed && withThrow && speed >= SHOT_MIN_SPEED) markShot(paper);
   renderer.domElement.style.cursor = "grab";
 }
 
@@ -1194,8 +1292,10 @@ function tick() {
     physicsWorld.step(PHYSICS_STEP, Math.min(dt, 0.05), 3);
     applyPhysicsBounds(dt);
     for (const p of papers) if (p) updatePaperMotion(p, dt);
+    updateHoop(dt);
     checkBaskets();
     updateSheetDim(dt);
+    updateTip();
   }
   composer.render();
 }
@@ -1316,8 +1416,10 @@ section.__stage = () => ({
   papers: papers.map((p) => p && p.state),
   score: { ...score },
   ballRadius: collisionRadius,
-  hoop: hoop ? { ...hoop.center, r: hoop.rimRadius } : null,
+  hoop: hoop ? { ...hoop.center, r: hoop.rimRadius, shown: hoopShown, armed: hoopArmed, visible: hoop.group.visible, meshY: +hoop.group.position.y.toFixed(2) } : null,
   activeOpacity: activePaper ? activePaper.material.opacity : null,
+  hover: hoverPaper ? hoverPaper.page.index : null,
+  tip: tipEl && !tipEl.hidden ? tipEl.textContent : null,
   pos: (i) => papers[i] && papers[i].body.position.toArray(),
   vel: (i) => papers[i] && papers[i].body.velocity.toArray(),
   // client-pixel position of a ball, for scripted pointer flicks
@@ -1331,7 +1433,7 @@ section.__stage = () => ({
   // drop a ball from directly above the rim — must always score
   drop: (i) => {
     const p = papers[i];
-    if (!p || !hoop) return false;
+    if (!p || !hoopArmed) return false;
     setPaperBodyDynamic(p, true);
     p.body.position.set(hoop.center.x, hoop.center.y + 0.7, hoop.center.z);
     p.body.velocity.set(0, 0, 0);
@@ -1345,7 +1447,7 @@ section.__stage = () => ({
   // launch a ball with an exact velocity, to exercise the rim deterministically
   shoot: (i, vx, vy, vz) => {
     const p = papers[i];
-    if (!p || !HOOP) return false;
+    if (!p || !hoopArmed) return false;
     setPaperBodyDynamic(p, true);
     p.body.velocity.set(vx, vy, vz);
     p.state = "rolling";
