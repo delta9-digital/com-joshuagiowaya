@@ -56,7 +56,8 @@ async function loadSvgTexture(url, size = 512) {
  * @param {CANNON.Material} o.paperMaterial
  * @param {{board:string, frame:string, rim:string, net:string}} o.colors
  * @param {string} [o.logoUrl]   SVG drawn onto the backboard above the rim
- * @returns {{ group, rimRadius, center:{x,y,z}, place(x:number):void, arm(on:boolean):void }}
+ * @returns {{ group, rimRadius, center:{x,y,z}, topOffset:number, faceZ:number,
+ *             place(x:number):void, setY(y:number):void, arm(on:boolean):void }}
  */
 export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, colors, logoUrl }) {
   const R = ballRadius * 1.9; // rim inner radius
@@ -154,7 +155,7 @@ export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, 
   function arm(on) {
     armed = on;
     const x = center.x;
-    const yy = on ? y : -100;
+    const yy = on ? center.y : -100;
     boardBody.position.set(x, yy + boardY, boardZ);
     for (const b of rimBodies) {
       b.position.set(x + (R + COLLIDER_R) * Math.cos(b.rimAngle), yy, rimZ + (R + COLLIDER_R) * Math.sin(b.rimAngle));
@@ -166,8 +167,15 @@ export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, 
     group.position.x = x;
     arm(armed);
   }
+  // Rim height; the group's y is animated by the caller, so only the colliders follow here.
+  function setY(newY) {
+    center.y = newY;
+    arm(armed);
+  }
+
   place(0);
   arm(false);
 
-  return { group, rimRadius: R, center, place, arm };
+  // topOffset: backboard top edge above the rim; faceZ: z of the backboard's front face
+  return { group, rimRadius: R, center, topOffset: boardY + bh / 2, faceZ: boardFaceZ, place, setY, arm };
 }

@@ -88,12 +88,17 @@ const THROW_LIFT = 1.15;
 const FLICK_WINDOW_MS = 120; // pointer samples used to measure a flick
 const SHOT_MIN_SPEED = 0.9;
 const SHEET_DIM = 0.12;
-const HOOP_Y = FLOOR_VISUAL_Y + 1.1;
+const HOOP_Y = FLOOR_VISUAL_Y + 1.1; // fallback rim height; normally fitted under the HUD
+const HOOP_Y_MIN = FLOOR_VISUAL_Y + 0.8;
+const HOOP_Y_MAX = FLOOR_VISUAL_Y + 2.1; // safety cap; throw lift scales to reach it (throwLift)
+const HOOP_CLEARANCE = 0.35; // how far a full-strength throw peaks above the rim
+const HUD_GAP_PX = 10; // space between the top bar and the backboard
 // With a hoop the camera looks a little higher so the raised backboard clears the HUD, and the
 // stage is a little shallower so the front row of balls stays in frame.
 const CAMERA_TARGET_Y = 0.35;
 const CAMERA_TARGET_Y_HOOP = 0.6;
-const HOOP_AWAY_Y = HOOP_Y + 2.8; // parked above the top of the view
+let hoopRestY = HOOP_Y;
+const hudEl = section.querySelector(".rs-hud");
 const CLICK_DRAG_THRESHOLD_PX = 6;
 const SWIPE_THRESHOLD_PX = 60;
 const BOUNDS_PULL = 3.0;
@@ -350,13 +355,34 @@ function buildHoop() {
   });
   stageBounds.maxZ = HOOP_MAX_Z;
   hoop.group.visible = false;
-  hoop.group.position.y = HOOP_AWAY_Y;
   placeHoop();
+  hoop.group.position.y = hoopAwayY();
 }
 
 function placeHoop() {
-  if (hoop) hoop.place(0); // centre of the back wall
+  if (!hoop) return;
+  hoop.place(0); // centre of the back wall
+  hoopRestY = fitHoopUnderHud();
+  hoop.setY(hoopRestY);
 }
+
+// Rim height that puts the backboard's top edge just under the HUD bar: project the bar's bottom
+// edge (plus a small gap) onto the backboard plane and subtract the board height above the rim.
+const _hudRay = new THREE.Raycaster();
+const _boardPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+const _hudHit = new THREE.Vector3();
+function fitHoopUnderHud() {
+  const h = container.clientHeight;
+  if (!hudEl || !h) return HOOP_Y;
+  const top = container.getBoundingClientRect().top;
+  const edge = hudEl.getBoundingClientRect().bottom - top + HUD_GAP_PX;
+  _hudRay.setFromCamera(new THREE.Vector2(0, 1 - (2 * edge) / h), camera);
+  _boardPlane.constant = -hoop.faceZ;
+  if (!_hudRay.ray.intersectPlane(_boardPlane, _hudHit)) return HOOP_Y;
+  return THREE.MathUtils.clamp(_hudHit.y - hoop.topOffset, HOOP_Y_MIN, HOOP_Y_MAX);
+}
+
+const hoopAwayY = () => hoopRestY + 2.8; // parked above the top of the view
 
 // Drops the hoop in once the last page has been read; lifts it away when a page is reopened.
 function setHoopShown(on) {
@@ -372,7 +398,7 @@ function setHoopShown(on) {
 
 function updateHoop(dt) {
   if (!hoop || !hoop.group.visible) return;
-  const target = hoopShown ? HOOP_Y : HOOP_AWAY_Y;
+  const target = hoopShown ? hoopRestY : hoopAwayY();
   const g = hoop.group;
   g.position.y = reduceMotion ? target : THREE.MathUtils.damp(g.position.y, target, 5, dt);
   const settled = Math.abs(g.position.y - target) < 0.005;
@@ -405,6 +431,16 @@ function checkBaskets() {
     score.made++;
     updateScore(true);
   }
+}
+
+// Lift per unit of horizontal flick speed. The rim height follows the layout (it sits under the
+// HUD, so it is higher on portrait screens), and a full-strength flick must always be able to
+// peak HOOP_CLEARANCE above it.
+function throwLift() {
+  const g = -physicsWorld.gravity.y;
+  const rise = hoopRestY + HOOP_CLEARANCE - (restCenterY + GRAB_LIFT);
+  const needed = rise > 0 ? Math.sqrt(2 * g * rise) / THROW_MAX_SPEED_HOOP : 0;
+  return Math.max(THROW_LIFT, needed);
 }
 
 function markShot(paper) {
@@ -1285,7 +1321,7 @@ function releaseGrab(paper, withThrow) {
     speed = maxSpeed;
   }
   // With a hoop, every flick lobs: lift scales with how hard it was thrown
-  const vy = HOOP && withThrow ? speed * THROW_LIFT : 0;
+  const vy = HOOP && withThrow ? speed * throwLift() : 0;
   body.type = CANNON.Body.DYNAMIC;
   body.mass = PAPER_MASS;
   body.updateMassProperties();
@@ -1437,6 +1473,8 @@ section.__stage = () => ({
   ballRadius: collisionRadius,
   hoop: hoop ? { ...hoop.center, r: hoop.rimRadius, shown: hoopShown, armed: hoopArmed, visible: hoop.group.visible, meshY: +hoop.group.position.y.toFixed(2) } : null,
   activeOpacity: activePaper ? activePaper.material.opacity : null,
+  throwLift: HOOP && physicsWorld ? throwLift() : null,
+  releaseY: restCenterY + GRAB_LIFT,
   hover: hoverPaper ? hoverPaper.page.index : null,
   tip: tipEl && !tipEl.hidden ? tipEl.textContent : null,
   pos: (i) => papers[i] && papers[i].body.position.toArray(),
@@ -1463,11 +1501,12 @@ section.__stage = () => ({
     markShot(p);
     return true;
   },
-  // launch a ball with an exact velocity, to exercise the rim deterministically
-  shoot: (i, vx, vy, vz) => {
+  // launch a ball with an exact velocity (optionally from a given point), to exercise the rim
+  shoot: (i, vx, vy, vz, from) => {
     const p = papers[i];
     if (!p || !hoopArmed) return false;
     setPaperBodyDynamic(p, true);
+    if (from) p.body.position.set(from[0], from[1], from[2]);
     p.body.velocity.set(vx, vy, vz);
     p.state = "rolling";
     p.time = 0;
