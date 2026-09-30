@@ -1,7 +1,8 @@
-# Publishes the sections/ previews to GitHub Pages.
+# Publishes the sections/ previews and the resume/ paper viewer to GitHub Pages.
 # The site keeps the repo layout so relative links (../../ds-bundle/styles.css) still resolve:
 #   /                          → redirects to the résumé section preview
 #   /sections/resume/resume.html
+#   /resume/                   (paper-crumple résumé viewer)
 #   /ds-bundle/…               (brand fonts + tokens)
 name: Deploy sections to GitHub Pages
 
@@ -11,6 +12,7 @@ on:
     paths:
       - "sections/**"
       - "ds-bundle/**"
+      - "resume/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -32,7 +34,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp -R sections ds-bundle _site/
+          cp -R sections ds-bundle resume _site/
           # Only the browser previews ship; WordPress pattern sources stay in the repo.
           find _site/sections -name '*.php' -delete
           cat > _site/index.html <<'HTML'
