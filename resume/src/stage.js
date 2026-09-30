@@ -88,7 +88,11 @@ const THROW_LIFT = 1.15;
 const FLICK_WINDOW_MS = 120; // pointer samples used to measure a flick
 const SHOT_MIN_SPEED = 0.9;
 const SHEET_DIM = 0.12;
-const HOOP_Y = FLOOR_VISUAL_Y + 0.85;
+const HOOP_Y = FLOOR_VISUAL_Y + 1.1;
+// With a hoop the camera looks a little higher so the raised backboard clears the HUD, and the
+// stage is a little shallower so the front row of balls stays in frame.
+const CAMERA_TARGET_Y = 0.35;
+const CAMERA_TARGET_Y_HOOP = 0.6;
 const HOOP_AWAY_Y = HOOP_Y + 2.8; // parked above the top of the view
 const CLICK_DRAG_THRESHOLD_PX = 6;
 const SWIPE_THRESHOLD_PX = 60;
@@ -96,6 +100,7 @@ const BOUNDS_PULL = 3.0;
 const LOW_TEX_W = 256;
 
 const stageBounds = { minX: -2.4, maxX: 2.4, minZ: WALL_Z, maxZ: 1.7 };
+const HOOP_MAX_Z = 1.4;
 
 // ---------- runtime state ----------
 let renderer, scene, camera, composer, physicsWorld, floorBody, paperPhysMat;
@@ -311,11 +316,12 @@ function resize() {
 function fitCamera(aspect) {
   camera.aspect = aspect;
   const pull = THREE.MathUtils.clamp(1.5 / aspect, 1, 1.7);
+  const targetY = HOOP ? CAMERA_TARGET_Y_HOOP : CAMERA_TARGET_Y;
   camera.position.set(0, CAMERA_BASE.y * pull, CAMERA_BASE.z * pull);
-  camera.lookAt(0, CAMERA_BASE.targetY, 0);
+  camera.lookAt(0, targetY, 0);
   camera.updateProjectionMatrix();
 
-  const dist = camera.position.distanceTo(new THREE.Vector3(0, CAMERA_BASE.targetY, 0));
+  const dist = camera.position.distanceTo(new THREE.Vector3(0, targetY, 0));
   const halfW = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * dist * aspect;
   stageBounds.maxX = Math.min(2.4, halfW * 0.88);
   stageBounds.minX = -stageBounds.maxX;
@@ -335,12 +341,14 @@ function buildHoop() {
     ballRadius: collisionRadius,
     paperMaterial: paperPhysMat,
     colors: {
-      board: token("--jg-surface-bright", "#f4f3f3"),
-      ink: token("--jg-ink", "#1d1b1b"),
-      accent: token("--jg-cyan", "#00bdff"),
+      board: token("--jg-charcoal", "#404143"),
+      frame: token("--jg-surface-bright", "#f4f3f3"),
       rim: token("--jg-orange", "#d7481e"),
+      net: token("--jg-surface-bright", "#f4f3f3"),
     },
+    logoUrl: new URL("../../ds-bundle/components/Brand/Logo/jg-wht.svg", import.meta.url).href,
   });
+  stageBounds.maxZ = HOOP_MAX_Z;
   hoop.group.visible = false;
   hoop.group.position.y = HOOP_AWAY_Y;
   placeHoop();

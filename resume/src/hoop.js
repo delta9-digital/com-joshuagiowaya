@@ -12,6 +12,40 @@ const RIM_TUBE = 0.018;
 const COLLIDER_R = 0.022;
 const BOARD_T = 0.04;
 
+// Rasterises an SVG into a texture. SVGs without width/height get them from the viewBox so the
+// browser gives the image a real size.
+async function loadSvgTexture(url, size = 512) {
+  try {
+    let svg = await (await fetch(url)).text();
+    const vb = svg.match(/viewBox=["']\s*[\d.-]+[\s,]+[\d.-]+[\s,]+([\d.]+)[\s,]+([\d.]+)/);
+    if (vb && !/<svg[^>]*\swidth=/.test(svg)) {
+      svg = svg.replace(/<svg/, `<svg width="${vb[1]}" height="${vb[2]}"`);
+    }
+    const blobUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = blobUrl;
+    });
+    URL.revokeObjectURL(blobUrl);
+    const w = img.naturalWidth || 256;
+    const h = img.naturalHeight || 256;
+    const s = size / Math.max(w, h);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(w * s);
+    canvas.height = Math.round(h * s);
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 8;
+    return { texture, aspect: canvas.width / canvas.height };
+  } catch (err) {
+    console.warn("[hoop] logo not loaded:", err);
+    return null;
+  }
+}
+
 /**
  * @param {object} o
  * @param {THREE.Scene} o.scene
@@ -20,10 +54,11 @@ const BOARD_T = 0.04;
  * @param {number} o.y            rim height (world y)
  * @param {number} o.ballRadius   physics radius of a crumpled sheet
  * @param {CANNON.Material} o.paperMaterial
- * @param {{board:string, ink:string, accent:string, rim:string}} o.colors
+ * @param {{board:string, frame:string, rim:string, net:string}} o.colors
+ * @param {string} [o.logoUrl]   SVG drawn onto the backboard above the rim
  * @returns {{ group, rimRadius, center:{x,y,z}, place(x:number):void, arm(on:boolean):void }}
  */
-export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, colors }) {
+export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, colors, logoUrl }) {
   const R = ballRadius * 1.9; // rim inner radius
   const boardZ = wallZ + BOARD_T / 2 + 0.005;
   const boardFaceZ = boardZ + BOARD_T / 2;
@@ -45,9 +80,8 @@ export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, 
   board.receiveShadow = true;
   group.add(board);
 
-  // Frame and target square as thin boxes (line primitives are always 1px, boxes scale with distance)
-  const frameMat = new THREE.MeshStandardMaterial({ color: colors.ink, roughness: 0.7 });
-  const targetMat = new THREE.MeshStandardMaterial({ color: colors.accent, roughness: 0.5 });
+  // Frame as thin boxes (line primitives are always 1px, boxes scale with distance)
+  const frameMat = new THREE.MeshStandardMaterial({ color: colors.frame, roughness: 0.7 });
   const t = 0.02;
   const bar = (w, h, x, yy, mat) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.012), mat);
@@ -58,13 +92,19 @@ export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, 
   bar(bw, t, 0, boardY - bh / 2 + t / 2, frameMat);
   bar(t, bh, -bw / 2 + t / 2, boardY, frameMat);
   bar(t, bh, bw / 2 - t / 2, boardY, frameMat);
-  const sw = R * 1.5;
-  const sh = R * 1.0;
-  const sy = sh / 2; // target square sits on the rim line
-  bar(sw, t, 0, sy + sh / 2 - t / 2, targetMat);
-  bar(sw, t, 0, sy - sh / 2 + t / 2, targetMat);
-  bar(t, sh, -sw / 2 + t / 2, sy, targetMat);
-  bar(t, sh, sw / 2 - t / 2, sy, targetMat);
+  // Logo centred on the board above the rim (loaded asynchronously; the board is fine without it)
+  if (logoUrl) {
+    loadSvgTexture(logoUrl).then((logo) => {
+      if (!logo) return;
+      const lh = R * 0.95;
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(lh * logo.aspect, lh),
+        new THREE.MeshBasicMaterial({ map: logo.texture, transparent: true, depthWrite: false }),
+      );
+      mesh.position.set(0, boardY + R * 0.08, boardFaceZ + 0.008);
+      group.add(mesh);
+    });
+  }
 
   const rimMat = new THREE.MeshStandardMaterial({ color: colors.rim, roughness: 0.45, metalness: 0.3 });
   const rim = new THREE.Mesh(new THREE.TorusGeometry(R + RIM_TUBE, RIM_TUBE, 10, 40), rimMat);
@@ -81,7 +121,7 @@ export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, 
   // Net: an open, tapered wireframe cylinder reads as cord at this size
   const net = new THREE.Mesh(
     new THREE.CylinderGeometry(R + RIM_TUBE * 0.5, R * 0.55, R * 1.5, 12, 5, true),
-    new THREE.MeshBasicMaterial({ color: colors.board, wireframe: true, transparent: true, opacity: 0.55 }),
+    new THREE.MeshBasicMaterial({ color: colors.net, wireframe: true, transparent: true, opacity: 0.55 }),
   );
   net.position.set(0, -R * 0.75, rimZ);
   group.add(net);
