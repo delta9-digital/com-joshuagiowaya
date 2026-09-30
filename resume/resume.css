@@ -366,3 +366,172 @@ a {
   cursor: default;
   border-color: var(--jg-charcoal);
 }
+
+/* ---------- fullscreen layout with HUD + menu overlay (v2) ---------- */
+.rs-stage--full {
+  padding-bottom: 0;
+  clip-path: none;
+}
+.rs-stage--full .rs-stage__viewport {
+  height: 100svh;
+}
+
+.rs-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem clamp(1rem, 3vw, 2rem);
+  pointer-events: none; /* the canvas underneath stays draggable between the controls */
+}
+.rs-hud > * {
+  pointer-events: auto;
+}
+.rs-hud__logo {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+}
+.rs-hud__title {
+  margin: 0;
+  font-size: var(--jg-text-sm);
+  color: var(--jg-gray-300);
+}
+.rs-hud__name {
+  color: var(--jg-white);
+}
+.rs-hud__sep {
+  color: var(--jg-cyan);
+  font-size: 0.6em;
+  margin: 0 0.5rem;
+  vertical-align: middle;
+}
+.rs-hud__counter {
+  margin: 0 0 0 auto;
+  font-size: var(--jg-text-sm);
+  color: var(--jg-gray-300);
+  letter-spacing: 0.12em;
+}
+.rs-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: var(--jg-text-xs);
+  color: var(--jg-white);
+  background: var(--jg-ink);
+  border: 1px solid var(--jg-charcoal);
+  border-bottom: 3px solid var(--jg-orange);
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+}
+.rs-menu-btn::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 2px solid var(--jg-cyan);
+  transform: rotate(45deg);
+}
+.rs-menu-btn:hover {
+  border-color: var(--jg-cyan);
+  border-bottom-color: var(--jg-orange);
+}
+
+.rs-menu {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: var(--rs-gutter);
+  overflow: auto;
+  background: rgba(29, 27, 27, 0.92);
+}
+.rs-menu[hidden] {
+  display: none;
+}
+.rs-menu__panel {
+  width: min(40rem, 100%);
+  display: grid;
+  gap: 1.5rem;
+  padding: 2rem clamp(1.25rem, 4vw, 2.5rem);
+  background: var(--jg-ink);
+  border: 1px solid var(--jg-charcoal);
+  border-top: 4px solid var(--jg-cyan);
+}
+.rs-menu__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.rs-menu__title {
+  margin: 0;
+  font-size: var(--jg-text-2xl);
+}
+.rs-menu__close {
+  width: 2.5rem;
+  height: 2.5rem;
+  font: 1rem var(--jg-font-heading);
+  color: var(--jg-gray-300);
+  background: transparent;
+  border: 1px solid var(--jg-charcoal);
+  cursor: pointer;
+}
+.rs-menu__close:hover {
+  color: var(--jg-white);
+  border-color: var(--jg-cyan);
+}
+.rs-menu__where {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: var(--jg-text-lg);
+}
+.rs-menu__label {
+  font-size: var(--jg-text-xs);
+  color: var(--jg-gray-300);
+}
+.rs-menu__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.rs-menu__sub {
+  margin: 0 0 0.75rem;
+  font-size: var(--jg-text-xs);
+  color: var(--jg-cyan);
+}
+.rs-menu__toc {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.rs-menu__toc .rs-chip {
+  font-size: var(--jg-text-sm);
+  padding: 0.6rem 1rem;
+}
+.rs-menu__hint {
+  margin: 0;
+  font-size: var(--jg-text-sm);
+  color: var(--jg-gray-300);
+}
+
+@media (max-width: 560px) {
+  .rs-hud__title {
+    display: none;
+  }
+  /* The open sheet spans nearly the full width on phones, so the ▲▼ pair moves below it. */
+  .rs-stage--full .rs-scroll {
+    top: auto;
+    bottom: 1.25rem;
+    right: 1rem;
+    transform: none;
+    flex-direction: row;
+  }
+}

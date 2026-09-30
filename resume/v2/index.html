@@ -17,48 +17,56 @@
     }
   </script>
 </head>
-<body>
-  <header class="rs-top">
-    <img class="rs-top__logo" src="../../ds-bundle/components/Brand/Logo/jg-wht.svg" alt="" width="56" height="56" />
-    <h1 class="rs-top__title">
-      <span class="jg-heading rs-top__name">Joshua Giowaya</span>
-      <span class="jg-display">Resume</span>
-    </h1>
-  </header>
-
+<body class="rs-full">
   <main>
-    <!-- Paper viewer. Hidden until the 3D stage boots; every sheet is generated from #resume below. -->
-    <section class="rs-stage" aria-label="Resume on paper" data-mode="read" data-sheet-headers="first" hidden>
+    <!-- Fullscreen paper viewer. Hidden until the 3D stage boots; every sheet is generated from #resume below. -->
+    <section class="rs-stage rs-stage--full" aria-label="Resume on paper" data-mode="read" data-sheet-headers="first" data-layout="full" hidden>
       <div class="rs-stage__viewport" tabindex="0" aria-describedby="stage-help">
         <div id="stage" class="rs-stage__canvas" aria-hidden="true"></div>
         <p class="rs-stage__loading jg-heading" id="stage-loading">Loading paper…</p>
+
+        <header class="rs-hud">
+          <img class="rs-hud__logo" src="../../ds-bundle/components/Brand/Logo/jg-wht.svg" alt="" width="40" height="40" />
+          <h1 class="rs-hud__title jg-heading"><span class="rs-hud__name">Joshua Giowaya</span><span class="rs-hud__sep" aria-hidden="true">◆</span>Resume</h1>
+          <p class="rs-hud__counter jg-heading" aria-hidden="true"><span data-counter>01 / 01</span></p>
+          <button type="button" class="rs-menu-btn jg-heading" data-menu-open aria-haspopup="dialog" aria-expanded="false" aria-controls="stage-menu">Menu</button>
+        </header>
+
         <div class="rs-scroll" aria-hidden="true">
           <button type="button" class="rs-scroll__btn" data-nav="up" tabindex="-1" title="Previous page">▲</button>
           <button type="button" class="rs-scroll__btn" data-nav="down" tabindex="-1" title="Next page">▼</button>
         </div>
+
+        <!-- Navigation overlay, opened by the Menu button -->
+        <div class="rs-menu" id="stage-menu" role="dialog" aria-modal="true" aria-labelledby="stage-menu-title" data-menu hidden>
+          <div class="rs-menu__panel">
+            <div class="rs-menu__head">
+              <h2 id="stage-menu-title" class="jg-display rs-menu__title">Resume</h2>
+              <button type="button" class="rs-menu__close" data-menu-close aria-label="Close menu">✕</button>
+            </div>
+            <p class="rs-menu__where jg-heading" aria-hidden="true">
+              <span data-counter>01 / 01</span>
+              <span class="rs-menu__label" data-label></span>
+            </p>
+            <div class="rs-menu__nav">
+              <button type="button" class="jg-btn rs-nav" data-nav="prev" aria-label="Previous page">
+                <span aria-hidden="true">←</span> Back
+              </button>
+              <button type="button" class="jg-btn jg-btn--cta rs-nav" data-nav="next" aria-label="Next page">
+                Next <span aria-hidden="true">→</span>
+              </button>
+            </div>
+            <nav aria-label="Resume sections">
+              <h3 class="rs-menu__sub jg-heading">Jump to</h3>
+              <ol class="rs-menu__toc" data-toc></ol>
+            </nav>
+            <p id="stage-help" class="rs-menu__hint">
+              Scroll, swipe, use the ▲▼ buttons or the arrow keys to turn pages. Each page you finish gets crumpled onto the floor, the last one included. Click a crumpled page to reopen it; drag one to toss it.
+              <button type="button" class="rs-link" data-text-toggle aria-controls="resume" aria-expanded="false">Read as text</button>
+            </p>
+          </div>
+        </div>
       </div>
-
-      <div class="rs-stage__bar">
-        <button type="button" class="jg-btn rs-nav" data-nav="prev" aria-label="Previous page">
-          <span aria-hidden="true">←</span> Back
-        </button>
-        <p class="rs-stage__counter jg-heading" aria-hidden="true">
-          <span data-counter>01 / 01</span>
-          <span class="rs-stage__label" data-label></span>
-        </p>
-        <button type="button" class="jg-btn jg-btn--cta rs-nav" data-nav="next" aria-label="Next page">
-          Next <span aria-hidden="true">→</span>
-        </button>
-      </div>
-
-      <nav class="rs-stage__toc" aria-label="Resume sections">
-        <ol data-toc></ol>
-      </nav>
-
-      <p id="stage-help" class="rs-stage__hint">
-        Scroll, use the ▲▼ or Back/Next buttons, the arrow keys, or swipe to turn pages. Each page you finish gets crumpled onto the floor, the last one included. Click a crumpled page to reopen it; drag one to toss it.
-        <button type="button" class="rs-link" data-text-toggle aria-controls="resume" aria-expanded="false">Read as text</button>
-      </p>
       <p class="rs-sr-only" role="status" data-status></p>
     </section>
 

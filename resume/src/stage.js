@@ -25,14 +25,18 @@ const container = document.getElementById("stage");
 const loadingEl = document.getElementById("stage-loading");
 const prevBtns = section.querySelectorAll('[data-nav="prev"], [data-nav="up"]');
 const nextBtns = section.querySelectorAll('[data-nav="next"], [data-nav="down"]');
-const counterEl = section.querySelector("[data-counter]");
-const labelEl = section.querySelector("[data-label]");
+const counterEls = section.querySelectorAll("[data-counter]");
+const labelEls = section.querySelectorAll("[data-label]");
 const tocEl = section.querySelector("[data-toc]");
 const statusEl = section.querySelector("[data-status]");
 const textToggle = section.querySelector("[data-text-toggle]");
+const menuBtn = section.querySelector("[data-menu-open]");
+const menuEl = section.querySelector("[data-menu]");
 const resumeEl = document.getElementById("resume");
 
 const MODE = section.dataset.mode === "read" ? "read" : "pile";
+// "full": the stage fills the screen — vertical swipes turn pages instead of scrolling the site.
+const FULL = section.dataset.layout === "full";
 const CONTINUATION_BAND = section.dataset.sheetHeaders !== "first";
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -168,7 +172,8 @@ function buildScene() {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.domElement.style.touchAction = "pan-y"; // vertical page scroll still works over the stage
+  // Vertical page scroll still works over an embedded stage; a fullscreen stage owns vertical swipes.
+  renderer.domElement.style.touchAction = FULL ? "none" : "pan-y";
   container.appendChild(renderer.domElement);
 
   const floor = new THREE.Mesh(
@@ -688,6 +693,7 @@ function startDiscard(paper, direction) {
 function goTo(index) {
   if (!animData || !pages.length) return;
   index = Math.max(0, Math.min(index, pages.length));
+  closeMenu(false);
   if (index === current) return;
   if (MODE === "read") goToRead(index);
   else goToPile(index);
@@ -783,16 +789,54 @@ function buildControls() {
   nextBtns.forEach((b) => b.addEventListener("click", next));
   viewport.addEventListener("keydown", onKey);
   viewport.addEventListener("wheel", onWheel, { passive: false });
-  section.querySelector(".rs-stage__bar").addEventListener("keydown", onKey);
+  const bar = section.querySelector(".rs-stage__bar");
+  if (bar) bar.addEventListener("keydown", onKey);
 
-  textToggle.addEventListener("click", () => {
-    const open = resumeEl.classList.toggle("is-open");
-    textToggle.setAttribute("aria-expanded", String(open));
-    textToggle.textContent = open ? "Hide text version" : "Read as text";
-    if (open) resumeEl.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
-  });
+  if (textToggle) {
+    textToggle.addEventListener("click", () => {
+      const open = resumeEl.classList.toggle("is-open");
+      textToggle.setAttribute("aria-expanded", String(open));
+      textToggle.textContent = open ? "Hide text version" : "Read as text";
+      closeMenu(false);
+      if (open) resumeEl.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+    });
+  }
+
+  if (menuBtn && menuEl) {
+    menuBtn.addEventListener("click", openMenu);
+    menuEl.querySelector("[data-menu-close]")?.addEventListener("click", () => closeMenu(true));
+    menuEl.addEventListener("click", (e) => {
+      if (e.target === menuEl) closeMenu(true); // backdrop
+    });
+    menuEl.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        closeMenu(true);
+      }
+    });
+  }
 
   updateControls(false);
+}
+
+// ---------- navigation overlay (v2) ----------
+const menuOpen = () => !!menuEl && !menuEl.hidden;
+
+function openMenu() {
+  if (!menuEl || menuOpen()) return;
+  menuEl.hidden = false;
+  menuBtn.setAttribute("aria-expanded", "true");
+  (menuEl.querySelector("[data-menu-close]") || menuEl).focus();
+}
+
+// restoreFocus: back to the Menu button when the visitor dismissed it; otherwise (a page was
+// chosen) focus lands on the stage so the arrow keys keep working.
+function closeMenu(restoreFocus) {
+  if (!menuOpen()) return;
+  menuEl.hidden = true;
+  menuBtn.setAttribute("aria-expanded", "false");
+  if (restoreFocus) menuBtn.focus();
+  else viewport.focus({ preventScroll: true });
 }
 
 function onKey(e) {
@@ -816,7 +860,7 @@ function onKey(e) {
 // site still scrolls normally.
 let wheelLockUntil = 0;
 function onWheel(e) {
-  if (!animData || !pages.length || Math.abs(e.deltaY) < WHEEL_MIN_DELTA) return;
+  if (!animData || !pages.length || menuOpen() || Math.abs(e.deltaY) < WHEEL_MIN_DELTA) return;
   const forward = e.deltaY > 0;
   if (forward ? current >= pages.length : current <= 0) return;
   e.preventDefault();
@@ -832,8 +876,10 @@ function updateControls(announce) {
   const finished = current >= total;
   const page = finished ? null : pages[Math.max(current, 0)];
   const pad = (n) => String(n).padStart(2, "0");
-  counterEl.textContent = `${pad(finished ? total : Math.max(current, 0) + 1)} / ${pad(total)}`;
-  labelEl.textContent = finished ? "All pages read" : page ? pageLabel(page) : "";
+  const counter = `${pad(finished ? total : Math.max(current, 0) + 1)} / ${pad(total)}`;
+  const label = finished ? "All pages read" : page ? pageLabel(page) : "";
+  counterEls.forEach((el) => (el.textContent = counter));
+  labelEls.forEach((el) => (el.textContent = label));
   prevBtns.forEach((b) => (b.disabled = current <= 0));
   nextBtns.forEach((b) => (b.disabled = current < 0 || finished));
   for (const chip of tocEl.querySelectorAll("button")) {
@@ -913,6 +959,11 @@ function bindPointer() {
     } else if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.5) {
       if (dx < 0) next();
       else prev();
+    } else if (FULL && Math.abs(dy) > SWIPE_THRESHOLD_PX && Math.abs(dy) > Math.abs(dx) * 1.5) {
+      // Fullscreen: a vertical swipe turns the page; past the last page it scrolls on to the site.
+      if (dy > 0) prev();
+      else if (current >= pages.length) window.scrollBy({ top: window.innerHeight * 0.9, behavior: reduceMotion ? "auto" : "smooth" });
+      else next();
     } else if (Math.hypot(dx, dy) <= CLICK_DRAG_THRESHOLD_PX * 2) {
       handleClick(e);
     }
