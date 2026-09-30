@@ -20,7 +20,7 @@
 <body class="rs-full">
   <main>
     <!-- Fullscreen paper viewer. Hidden until the 3D stage boots; every sheet is generated from #resume below. -->
-    <section class="rs-stage rs-stage--full" aria-label="Resume on paper" data-mode="read" data-sheet-headers="first" data-layout="full" hidden>
+    <section class="rs-stage rs-stage--full" aria-label="Resume on paper" data-mode="read" data-sheet-headers="first" data-layout="full" data-hoop="on" hidden>
       <div class="rs-stage__viewport" tabindex="0" aria-describedby="stage-help">
         <div id="stage" class="rs-stage__canvas" aria-hidden="true"></div>
         <p class="rs-stage__loading jg-heading" id="stage-loading">Loading paper…</p>
@@ -28,6 +28,7 @@
         <header class="rs-hud">
           <img class="rs-hud__logo" src="../../ds-bundle/components/Brand/Logo/jg-wht.svg" alt="" width="40" height="40" />
           <h1 class="rs-hud__title jg-heading"><span class="rs-hud__name">Joshua Giowaya</span><span class="rs-hud__sep" aria-hidden="true">◆</span>Resume</h1>
+          <p class="rs-hud__score jg-heading" data-score hidden><span data-score-made>0</span> / <span data-score-shots>0</span> <span class="rs-hud__score-label">baskets</span></p>
           <p class="rs-hud__counter jg-heading" aria-hidden="true"><span data-counter>01 / 01</span></p>
           <button type="button" class="rs-menu-btn jg-heading" data-menu-open aria-haspopup="dialog" aria-expanded="false" aria-controls="stage-menu">Menu</button>
         </header>
@@ -61,7 +62,7 @@
               <ol class="rs-menu__toc" data-toc></ol>
             </nav>
             <p id="stage-help" class="rs-menu__hint">
-              Scroll, swipe, use the ▲▼ buttons or the arrow keys to turn pages. Each page you finish gets crumpled onto the floor, the last one included. Click a crumpled page to reopen it; drag one to toss it.
+              Scroll, swipe, use the ▲▼ buttons or the arrow keys to turn pages. Each page you finish gets crumpled onto the floor, the last one included. Click a crumpled page to reopen it — or pick one up and flick it at the hoop on the back wall.
               <button type="button" class="rs-link" data-text-toggle aria-controls="resume" aria-expanded="false">Read as text</button>
             </p>
           </div>

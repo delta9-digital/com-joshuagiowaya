@@ -535,3 +535,29 @@ a {
     flex-direction: row;
   }
 }
+
+/* ---------- hoop score in the HUD (v2) ---------- */
+.rs-hud__score {
+  margin: 0 0 0 auto;
+  font-size: var(--jg-text-sm);
+  color: var(--jg-white);
+  letter-spacing: 0.12em;
+}
+.rs-hud__score[hidden] {
+  display: none;
+}
+.rs-hud__score + .rs-hud__counter {
+  margin-left: 1.25rem;
+}
+.rs-hud__score-label {
+  color: var(--jg-gray-300);
+}
+.rs-hud__score.is-bump {
+  animation: rs-score-bump 0.35s ease-out;
+}
+@keyframes rs-score-bump {
+  from { transform: scale(1.25); color: var(--jg-cyan); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rs-hud__score.is-bump { animation: none; }
+}

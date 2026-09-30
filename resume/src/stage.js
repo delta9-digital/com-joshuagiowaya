@@ -9,6 +9,8 @@
 //          the floor. Next on the last sheet crumples it too, leaving nothing open ("finished").
 // Pages turn with Back/Next, ▲/▼ buttons, arrow keys, the mouse wheel, or a swipe.
 // data-sheet-headers="first" draws the dark header band only on a section's first sheet.
+// data-hoop="on" hangs a basketball hoop on the back wall: flicked balls arc, and one that drops
+// through the rim counts as a basket in the HUD.
 // Scene, VAT playback, and physics are adapted from item-develop/paper-crumple-demo (MIT).
 // ==================================================
 import * as THREE from "three";
@@ -18,6 +20,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { readResume, paginate, drawPage, waitForFonts, PAGE_W, PAGE_H } from "./pages.js";
+import { createHoop } from "./hoop.js";
 
 const section = document.querySelector(".rs-stage");
 const viewport = section.querySelector(".rs-stage__viewport");
@@ -30,6 +33,9 @@ const labelEls = section.querySelectorAll("[data-label]");
 const tocEl = section.querySelector("[data-toc]");
 const statusEl = section.querySelector("[data-status]");
 const textToggle = section.querySelector("[data-text-toggle]");
+const scoreEl = section.querySelector("[data-score]");
+const scoreMadeEl = section.querySelector("[data-score-made]");
+const scoreShotsEl = section.querySelector("[data-score-shots]");
 const menuBtn = section.querySelector("[data-menu-open]");
 const menuEl = section.querySelector("[data-menu]");
 const resumeEl = document.getElementById("resume");
@@ -37,6 +43,7 @@ const resumeEl = document.getElementById("resume");
 const MODE = section.dataset.mode === "read" ? "read" : "pile";
 // "full": the stage fills the screen — vertical swipes turn pages instead of scrolling the site.
 const FULL = section.dataset.layout === "full";
+const HOOP = section.dataset.hoop === "on";
 const CONTINUATION_BAND = section.dataset.sheetHeaders !== "first";
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -70,6 +77,15 @@ const GRAB_LIFT = 0.5;
 const GRAB_STIFFNESS = 14;
 const GRAB_MAX_SPEED = 4.5;
 const THROW_MAX_SPEED = 3.2;
+// Hoop: horizontal release speed cap, the lift added per unit of horizontal speed (~40° arc),
+// the flick speed below which a release is a drop rather than a shot, and how far the open sheet
+// fades while a ball is in hand or in the air so the hoop stays visible on narrow screens.
+const THROW_MAX_SPEED_HOOP = 3.6;
+const THROW_LIFT = 1.15;
+const FLICK_WINDOW_MS = 120; // pointer samples used to measure a flick
+const SHOT_MIN_SPEED = 0.9;
+const SHEET_DIM = 0.12;
+const HOOP_Y = FLOOR_VISUAL_Y + 0.85;
 const CLICK_DRAG_THRESHOLD_PX = 6;
 const SWIPE_THRESHOLD_PX = 60;
 const BOUNDS_PULL = 3.0;
@@ -85,6 +101,9 @@ const papers = [];
 let activePaper = null;
 let current = -1; // index of the open page; pages.length once the last page has been crumpled
 let pendingArrival = null; // read mode: { index, cancel } while waiting for a tossed sheet to land
+let hoop = null;
+const score = { made: 0, shots: 0 };
+let throwCounter = 0;
 let pointerState = null;
 let prevTime = null;
 let running = false;
@@ -140,6 +159,7 @@ async function start() {
   const { loadVATData } = await import("../vendor/paper-crumple/paper-vat.js");
   animData = await loadVATData(new URL("../vat/", import.meta.url).href);
   measureCrumple();
+  if (HOOP) buildHoop();
 
   loadingEl.hidden = true;
   if (MODE === "read") {
@@ -233,6 +253,12 @@ function buildScene() {
     quaternion: new CANNON.Quaternion().setFromEuler(-Math.PI / 2, 0, 0),
   });
   physicsWorld.addBody(floorBody);
+  if (HOOP) {
+    // With a hoop the back wall is solid too (a Plane faces +z by default, toward the camera)
+    physicsWorld.addBody(
+      new CANNON.Body({ mass: 0, material: floorPhysMat, shape: new CANNON.Plane(), position: new CANNON.Vec3(0, 0, WALL_Z) }),
+    );
+  }
 
   resize();
   new ResizeObserver(resize).observe(container);
@@ -276,6 +302,91 @@ function fitCamera(aspect) {
   stageBounds.maxX = Math.min(2.4, halfW * 0.88);
   stageBounds.minX = -stageBounds.maxX;
   updateOpenPose();
+  placeHoop();
+}
+
+// ==================================================
+// Hoop + scoring
+// ==================================================
+function buildHoop() {
+  hoop = createHoop({
+    scene,
+    world: physicsWorld,
+    wallZ: WALL_Z,
+    y: HOOP_Y,
+    ballRadius: collisionRadius,
+    paperMaterial: paperPhysMat,
+    colors: {
+      board: token("--jg-surface-bright", "#f4f3f3"),
+      ink: token("--jg-ink", "#1d1b1b"),
+      accent: token("--jg-cyan", "#00bdff"),
+      rim: token("--jg-orange", "#d7481e"),
+    },
+  });
+  placeHoop();
+}
+
+// Right of centre so the open sheet doesn't hide it; follows the stage width on resize.
+function placeHoop() {
+  if (hoop) hoop.place(stageBounds.maxX * 0.7);
+}
+
+// A basket: a shot ball's centre crosses the plane just under the rim, heading down, inside the
+// rim. Checked every frame against the previous position so a fast ball can't slip between steps.
+function checkBaskets() {
+  if (!hoop) return;
+  const gateY = hoop.center.y - hoop.rimRadius * 0.6;
+  const inside = (hoop.rimRadius * 0.95) ** 2;
+  for (const p of papers) {
+    if (!p || !p.throw || !p.throw.shot || p.throw.scored) continue;
+    const b = p.body;
+    const y = b.position.y;
+    const prevY = p.throw.prevY;
+    p.throw.prevY = y;
+    if (prevY === undefined || !(prevY > gateY && y <= gateY) || b.velocity.y >= 0) continue;
+    const dx = b.position.x - hoop.center.x;
+    const dz = b.position.z - hoop.center.z;
+    if (dx * dx + dz * dz > inside) continue;
+    p.throw.scored = true;
+    score.made++;
+    updateScore(true);
+  }
+}
+
+function markShot(paper) {
+  paper.throw.shot = ++throwCounter;
+  score.shots++;
+  updateScore(false);
+}
+
+function updateScore(made) {
+  if (!scoreEl) return;
+  scoreEl.hidden = false;
+  scoreMadeEl.textContent = String(score.made);
+  scoreShotsEl.textContent = String(score.shots);
+  if (!made) return;
+  scoreEl.classList.remove("is-bump");
+  void scoreEl.offsetWidth; // restart the animation
+  scoreEl.classList.add("is-bump");
+  statusEl.textContent = `Basket! ${score.made} of ${score.shots}.`;
+}
+
+// A shot in flight (or a held ball) — the open sheet fades so the hoop stays visible behind it.
+function aimingAtHoop() {
+  return papers.some(
+    (p) =>
+      p &&
+      (p.state === "grabbed" ||
+        (p.state === "rolling" && p.throw && p.throw.shot && p.time < 4 && !isOnGround(p.body))),
+  );
+}
+
+function updateSheetDim(dt) {
+  if (!HOOP || !activePaper || activePaper.state !== "open") return;
+  const mat = activePaper.material;
+  const target = aimingAtHoop() ? SHEET_DIM : 1;
+  mat.opacity = THREE.MathUtils.damp(mat.opacity, target, 8, dt);
+  mat.transparent = mat.opacity < 0.999;
 }
 
 // ==================================================
@@ -911,12 +1022,17 @@ function updatePointer(e) {
   pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 }
 
+// Nearest paper under the pointer — except that a ball sitting behind the open sheet wins over
+// the sheet, so balls stay grabbable when the sheet covers most of the view (phones, the hoop).
 function pickPaper(e) {
   updatePointer(e);
   raycaster.setFromCamera(pointer, camera);
   const live = papers.filter(Boolean);
-  const hit = raycaster.intersectObjects(live.map((p) => p.mesh));
-  return hit.length ? live.find((p) => p.mesh === hit[0].object) || null : null;
+  const hits = raycaster.intersectObjects(live.map((p) => p.mesh));
+  if (!hits.length) return null;
+  const byMesh = (h) => live.find((p) => p.mesh === h.object) || null;
+  const ball = hits.map(byMesh).find((p) => p && isGrabbable(p));
+  return ball || byMesh(hits[0]);
 }
 
 const isGrabbable = (p) => p.state === "closed" || p.state === "rolling";
@@ -1003,7 +1119,7 @@ function beginGrab(paper, e) {
   body.collisionFilterGroup = 1; // keep shoving other balls while held
   body.collisionFilterMask = 1;
   body.wakeUp();
-  paper.grab = { target: new THREE.Vector3(body.position.x, restCenterY + GRAB_LIFT, body.position.z) };
+  paper.grab = { target: new THREE.Vector3(body.position.x, restCenterY + GRAB_LIFT, body.position.z), samples: [] };
   updateGrabTarget(paper, e);
   renderer.domElement.style.cursor = "grabbing";
 }
@@ -1019,27 +1135,50 @@ function updateGrabTarget(paper, e) {
     restCenterY + GRAB_LIFT,
     THREE.MathUtils.clamp(grabHitPoint.z, stageBounds.minZ + collisionRadius, stageBounds.maxZ - collisionRadius),
   );
+  // Keep a short history of where the pointer was, so a release can measure the flick itself
+  // (independent of frame rate and of how far the ball lags behind the pointer).
+  const samples = paper.grab.samples;
+  samples.push({ t: performance.now(), x: grabHitPoint.x, z: grabHitPoint.z });
+  while (samples.length > 1 && samples[0].t < samples[samples.length - 1].t - FLICK_WINDOW_MS) samples.shift();
+}
+
+// Pointer velocity over the last FLICK_WINDOW_MS, on the grab plane (world units per second).
+function flickVelocity(paper) {
+  const samples = paper.grab && paper.grab.samples;
+  if (!samples || samples.length < 2) return null;
+  const a = samples[0];
+  const b = samples[samples.length - 1];
+  const dt = (b.t - a.t) / 1000;
+  if (dt < 0.016) return null;
+  return { x: (b.x - a.x) / dt, z: (b.z - a.z) / dt };
 }
 
 function releaseGrab(paper, withThrow) {
   if (!paper || paper.state !== "grabbed") return;
   const body = paper.body;
-  let vx = withThrow ? body.velocity.x : 0;
-  let vz = withThrow ? body.velocity.z : 0;
-  const speed = Math.hypot(vx, vz);
-  if (speed > THROW_MAX_SPEED) {
-    vx *= THROW_MAX_SPEED / speed;
-    vz *= THROW_MAX_SPEED / speed;
+  // Throw with the pointer's own flick velocity; fall back to the spring velocity (e.g. no samples)
+  const flick = withThrow ? flickVelocity(paper) : null;
+  let vx = withThrow ? (flick ? flick.x : body.velocity.x) : 0;
+  let vz = withThrow ? (flick ? flick.z : body.velocity.z) : 0;
+  let speed = Math.hypot(vx, vz);
+  const maxSpeed = HOOP ? THROW_MAX_SPEED_HOOP : THROW_MAX_SPEED;
+  if (speed > maxSpeed) {
+    vx *= maxSpeed / speed;
+    vz *= maxSpeed / speed;
+    speed = maxSpeed;
   }
+  // With a hoop, every flick lobs: lift scales with how hard it was thrown
+  const vy = HOOP && withThrow ? speed * THROW_LIFT : 0;
   body.type = CANNON.Body.DYNAMIC;
   body.mass = PAPER_MASS;
   body.updateMassProperties();
-  body.velocity.set(vx, 0, vz);
+  body.velocity.set(vx, vy, vz);
   body.angularVelocity.set((vz / collisionRadius) * 0.6, 0, (-vx / collisionRadius) * 0.6);
   body.wakeUp();
   paper.state = "rolling";
   paper.time = 0;
   paper.throw = { settleTimer: 0 };
+  if (HOOP && withThrow && speed >= SHOT_MIN_SPEED) markShot(paper);
   renderer.domElement.style.cursor = "grab";
 }
 
@@ -1055,6 +1194,8 @@ function tick() {
     physicsWorld.step(PHYSICS_STEP, Math.min(dt, 0.05), 3);
     applyPhysicsBounds(dt);
     for (const p of papers) if (p) updatePaperMotion(p, dt);
+    checkBaskets();
+    updateSheetDim(dt);
   }
   composer.render();
 }
@@ -1169,6 +1310,50 @@ function updatePaperMotion(paper, dt) {
 }
 
 // Test hook: lets a headless driver read the stage state (which page is open, what's on the floor).
-section.__stage = () => ({ current, pending: pendingArrival && pendingArrival.index, papers: papers.map((p) => p && p.state) });
+section.__stage = () => ({
+  current,
+  pending: pendingArrival && pendingArrival.index,
+  papers: papers.map((p) => p && p.state),
+  score: { ...score },
+  ballRadius: collisionRadius,
+  hoop: hoop ? { ...hoop.center, r: hoop.rimRadius } : null,
+  activeOpacity: activePaper ? activePaper.material.opacity : null,
+  pos: (i) => papers[i] && papers[i].body.position.toArray(),
+  vel: (i) => papers[i] && papers[i].body.velocity.toArray(),
+  // client-pixel position of a ball, for scripted pointer flicks
+  screen: (i) => {
+    const p = papers[i];
+    if (!p) return null;
+    const v = p.mesh.position.clone().project(camera);
+    const r = renderer.domElement.getBoundingClientRect();
+    return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
+  },
+  // drop a ball from directly above the rim — must always score
+  drop: (i) => {
+    const p = papers[i];
+    if (!p || !hoop) return false;
+    setPaperBodyDynamic(p, true);
+    p.body.position.set(hoop.center.x, hoop.center.y + 0.7, hoop.center.z);
+    p.body.velocity.set(0, 0, 0);
+    p.body.angularVelocity.set(0, 0, 0);
+    p.state = "rolling";
+    p.time = 0;
+    p.throw = { settleTimer: 0 };
+    markShot(p);
+    return true;
+  },
+  // launch a ball with an exact velocity, to exercise the rim deterministically
+  shoot: (i, vx, vy, vz) => {
+    const p = papers[i];
+    if (!p || !HOOP) return false;
+    setPaperBodyDynamic(p, true);
+    p.body.velocity.set(vx, vy, vz);
+    p.state = "rolling";
+    p.time = 0;
+    p.throw = { settleTimer: 0 };
+    markShot(p);
+    return true;
+  },
+});
 
 boot();
