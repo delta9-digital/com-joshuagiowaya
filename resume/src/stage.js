@@ -48,6 +48,8 @@ const MODE = section.dataset.mode === "read" ? "read" : "pile";
 const FULL = section.dataset.layout === "full";
 const HOOP = section.dataset.hoop === "on";
 const CONTINUATION_BAND = section.dataset.sheetHeaders !== "first";
+// data-sheets="print": plain printed paper, tighter type, sections flowing onto shared sheets
+const SHEET_LAYOUT = section.dataset.sheets === "print" ? "print" : "notebook";
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const rootStyle = getComputedStyle(document.documentElement);
@@ -171,7 +173,7 @@ function fail(err) {
 async function start() {
   await waitForFonts();
   const compact = container.clientWidth < 640;
-  pages = paginate(readResume(resumeEl), { compact, continuationBand: CONTINUATION_BAND });
+  pages = paginate(readResume(resumeEl), { compact, continuationBand: CONTINUATION_BAND, layout: SHEET_LAYOUT });
   buildControls();
   buildScene();
 
@@ -978,23 +980,22 @@ function goToRead(index) {
 const next = () => goTo(current + 1);
 const prev = () => goTo(current - 1);
 
+// "Code42", "Code42 (cont.)", or "Code42 (cont.) · Linnihan Foy" when sections share a sheet
 function pageLabel(page) {
-  return page.first ? page.section.title : `${page.section.title} (cont.)`;
+  return page.parts.map((p) => (p.cont ? `${p.title} (cont.)` : p.title)).join(" · ");
 }
 
 function buildControls() {
-  // One chip per section, pointing at its first sheet
+  // One chip per section, pointing at the sheet where it starts
   tocEl.replaceChildren();
-  pages
-    .filter((p) => p.first)
-    .forEach((page) => {
+  pages.toc.forEach((entry) => {
       const li = document.createElement("li");
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "rs-chip jg-heading";
-      btn.textContent = page.section.nav;
-      btn.dataset.section = String(page.sectionIndex);
-      btn.addEventListener("click", () => goTo(page.index));
+      btn.textContent = entry.nav;
+      btn.dataset.section = String(entry.sectionIndex);
+      btn.addEventListener("click", () => goTo(entry.pageIndex));
       li.append(btn);
       tocEl.append(li);
     });
@@ -1097,7 +1098,7 @@ function updateControls(announce) {
   prevBtns.forEach((b) => (b.disabled = current <= 0));
   nextBtns.forEach((b) => (b.disabled = current < 0 || finished));
   for (const chip of tocEl.querySelectorAll("button")) {
-    const on = page && chip.dataset.section === String(page.sectionIndex);
+    const on = !!page && page.parts.some((p) => String(p.sectionIndex) === chip.dataset.section);
     chip.classList.toggle("is-active", on);
     if (on) chip.setAttribute("aria-current", "step");
     else chip.removeAttribute("aria-current");
@@ -1217,9 +1218,9 @@ function setHover(paper) {
   paper.material.emissive.copy(HOVER_GLOW);
   paper.material.emissiveIntensity = 0.35;
   const page = paper.page;
-  tipEl.querySelector(".rs-tip__title").textContent = page.section.title;
+  tipEl.querySelector(".rs-tip__title").textContent = page.parts.map((p) => p.title).join(" · ");
   tipEl.querySelector(".rs-tip__meta").textContent =
-    `Page ${page.index + 1} / ${pages.length}` + (page.first ? "" : " · continued");
+    `Page ${page.index + 1} / ${pages.length}` + (page.parts[0].cont ? " · continued" : "");
   tipEl.hidden = false;
   updateTip();
 }

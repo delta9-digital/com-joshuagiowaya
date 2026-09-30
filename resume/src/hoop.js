@@ -97,12 +97,12 @@ export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, 
   if (logoUrl) {
     loadSvgTexture(logoUrl).then((logo) => {
       if (!logo) return;
-      const lh = R * 0.95;
+      const lh = R * 1.45;
       const mesh = new THREE.Mesh(
         new THREE.PlaneGeometry(lh * logo.aspect, lh),
         new THREE.MeshBasicMaterial({ map: logo.texture, transparent: true, depthWrite: false }),
       );
-      mesh.position.set(0, boardY + R * 0.08, boardFaceZ + 0.008);
+      mesh.position.set(0, boardY + R * 0.04, boardFaceZ + 0.008);
       group.add(mesh);
     });
   }
