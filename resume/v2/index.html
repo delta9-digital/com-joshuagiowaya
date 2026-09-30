@@ -35,14 +35,14 @@
             <p class="rs-hud__score jg-heading" data-score hidden><span data-score-made>0</span> / <span data-score-shots>0</span> <span class="rs-hud__score-label">baskets</span></p>
           </div>
           <div class="rs-hud__right">
-            <button type="button" class="rs-menu-btn jg-heading" data-menu-open aria-haspopup="dialog" aria-expanded="false" aria-controls="stage-menu">Menu</button>
+            <div class="rs-hud__arrows">
+              <button type="button" class="rs-glass-btn rs-glass-btn--icon" data-nav="up" aria-label="Previous page"><span aria-hidden="true">▲</span></button>
+              <button type="button" class="rs-glass-btn rs-glass-btn--icon" data-nav="down" aria-label="Next page"><span aria-hidden="true">▼</span></button>
+            </div>
+            <button type="button" class="rs-glass-btn rs-menu-btn jg-heading" data-menu-open aria-label="Menu" aria-haspopup="dialog" aria-expanded="false" aria-controls="stage-menu"><span class="rs-menu-btn__label" aria-hidden="true">Menu</span></button>
           </div>
         </header>
 
-        <div class="rs-scroll" aria-hidden="true">
-          <button type="button" class="rs-scroll__btn" data-nav="up" tabindex="-1" title="Previous page">▲</button>
-          <button type="button" class="rs-scroll__btn" data-nav="down" tabindex="-1" title="Next page">▼</button>
-        </div>
 
         <!-- Navigation overlay, opened by the Menu button -->
         <div class="rs-menu" id="stage-menu" role="dialog" aria-modal="true" aria-labelledby="stage-menu-title" data-menu hidden>

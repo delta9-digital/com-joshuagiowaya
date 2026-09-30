@@ -688,3 +688,88 @@ a {
     background: rgba(64, 65, 67, 0.96);
   }
 }
+
+/* ---------- top bar: bigger logo, glass arrows + Menu (v2) ---------- */
+.rs-stage--full .rs-hud__logo {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+.rs-hud__arrows {
+  display: flex;
+  gap: 0.4rem;
+}
+/* Same frosted glass as the menu overlay panel */
+.rs-stage--full .rs-glass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  font-family: var(--jg-font-heading);
+  font-size: var(--jg-text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--jg-heading-tracking);
+  color: var(--jg-surface-bright);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-top-color: rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.rs-stage--full .rs-glass-btn:hover {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08));
+  border-color: var(--jg-cyan);
+  color: var(--jg-white);
+}
+.rs-stage--full .rs-glass-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.rs-stage--full .rs-glass-btn--icon {
+  width: 2.75rem;
+  padding: 0;
+  font-size: 0.75rem;
+}
+.rs-stage--full .rs-hud__right {
+  gap: 0.5rem;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .rs-stage--full .rs-glass-btn {
+    background: rgba(64, 65, 67, 0.92);
+  }
+}
+@media (max-width: 560px) {
+  .rs-stage--full .rs-hud__logo {
+    width: 3rem;
+    height: 3rem;
+  }
+  .rs-stage--full .rs-hud__right {
+    gap: 0.35rem;
+  }
+  .rs-stage--full .rs-glass-btn--icon {
+    width: 2.5rem;
+  }
+  .rs-stage--full .rs-glass-btn {
+    min-height: 2.5rem;
+    padding: 0 0.75rem;
+  }
+}
+@media (max-width: 560px) {
+  /* Phones: Menu shows just its diamond so arrows + Menu fit the right third of the bar */
+  .rs-stage--full .rs-menu-btn {
+    width: 2.5rem;
+    padding: 0;
+    gap: 0;
+  }
+  .rs-stage--full .rs-menu-btn__label {
+    display: none;
+  }
+}
