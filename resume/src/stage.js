@@ -90,7 +90,28 @@ const THROW_MAX_SPEED = 3.2;
 const THROW_MAX_SPEED_HOOP = 3.6;
 const THROW_LIFT = 1.15;
 const FLICK_WINDOW_MS = 120; // pointer samples used to measure a flick
-const SHOT_MIN_SPEED = 0.9;
+const FLICK_SLOW_FRAME_MS = 250;
+// Aimed shots (hoop down): an upward flick launches a lob at the rim. Flick speed sets distance
+// (a flick near SHOT_IDEAL_PX_PER_SCREEN_DIST × the on-screen distance to the rim is "right"),
+// flick angle sets left/right, and near-misses are pulled toward a make.
+const SHOT_MIN_UP_PX_S = 250; // an upward flick at least this fast (px/s) is a shot
+const SHOT_IDEAL_PX_PER_SCREEN_DIST = 3.2; // ideal flick speed = on-screen distance to rim × this, per second
+// People's flick speeds vary a lot, so power is forgiving: anything in [OK_MIN, OK_MAX] of the
+// ideal lands on target (keeping a sliver of the error so shots aren't identical); only a feeble
+// flick falls short and a wild one flies long.
+const SHOT_POWER_OK_MIN = 0.4;
+const SHOT_POWER_OK_MAX = 2.1;
+const SHOT_POWER_KEEP = 0.06;
+const SHOT_ANGLE_SNAP = THREE.MathUtils.degToRad(18); // angle errors below this are forgiven …
+const SHOT_ANGLE_SNAP_KEEP = 0.2; // … keeping this share
+const SHOT_ARC = 0.6; // apex height above the higher of release point and rim (world units)
+// While the hoop is down a picked-up ball glides to a "free-throw" spot, so every shot starts from
+// the same place and the same flick always does the same thing. The spot is picked on screen —
+// centred, SHOT_SPOT_SCREEN_Y of the way down — and projected into the scene at carry height, so
+// it sits clearly in front of the hoop on any screen shape.
+const SHOT_SPOT_SCREEN_Y = 0.74;
+const SHOT_SPOT_LIFT = 0.15; // above the normal carry height
+const BALL_DAMPING = 0.15;
 const SHEET_DIM = 0.12;
 const HOOP_Y = FLOOR_VISUAL_Y + 1.1; // fallback rim height; normally fitted under the HUD
 const HOOP_Y_MIN = FLOOR_VISUAL_Y + 0.8;
@@ -119,6 +140,8 @@ const papers = [];
 let activePaper = null;
 let current = -1; // index of the open page; pages.length once the last page has been crumpled
 let pendingArrival = null; // read mode: { index, cancel } while waiting for a tossed sheet to land
+let lastFlick = null; // last measured release flick (px/s), for the test hook
+let lastAim = null;
 let hoverPaper = null; // ball under the pointer (or tapped once on touch)
 let tipEl = null;
 const HOVER_GLOW = new THREE.Color(token("--jg-cyan", "#00bdff"));
@@ -730,7 +753,7 @@ function createPaperBody(paper) {
     mass: PAPER_MASS,
     material: paperPhysMat,
     shape: new CANNON.Sphere(collisionRadius),
-    linearDamping: 0.15,
+    linearDamping: BALL_DAMPING,
     angularDamping: 0.35,
     position: new CANNON.Vec3(
       paper.mesh.position.x + off.x,
@@ -782,6 +805,7 @@ function isOnGround(body) {
 }
 
 function applyRollingResistance(body, dt) {
+  dt = Math.min(dt, 0.05); // match the physics step cap so slow frames don't over-apply friction
   const linearDecay = Math.exp(-ROLL_LINEAR_RESISTANCE * dt);
   const angularDecay = Math.exp(-ROLL_ANGULAR_RESISTANCE * dt);
   body.velocity.x *= linearDecay;
@@ -799,6 +823,8 @@ function applyPhysicsBounds(dt) {
   const maxZ = stageBounds.maxZ - collisionRadius;
   for (const paper of papers) {
     if (!paper || paper.body.type !== CANNON.Body.DYNAMIC) continue;
+    // A shot in flight goes where it was aimed; the stage edges only apply once it's down
+    if (paper.throw && paper.throw.aimed && !isOnGround(paper.body)) continue;
     const { position: p, velocity: v } = paper.body;
     if (p.x < minX) {
       if (v.x < 0) v.x = Math.abs(v.x) * 0.42;
@@ -1186,6 +1212,7 @@ function bindPointer() {
     const dx = e.clientX - pointerState.startX;
     const dy = e.clientY - pointerState.startY;
     if (pointerState.grabbing) {
+      if (pointerState.paper && pointerState.paper.grab) recordScreenSamples(pointerState.paper, e);
       releaseGrab(pointerState.paper, true);
     } else if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.5) {
       if (dx < 0) next();
@@ -1279,6 +1306,7 @@ function beginGrab(paper, e) {
   body.updateMassProperties();
   body.velocity.set(0, 0, 0);
   body.angularVelocity.set(0, 0, 0);
+  body.linearDamping = BALL_DAMPING;
   body.collisionFilterGroup = 1; // keep shoving other balls while held
   body.collisionFilterMask = 1;
   body.wakeUp();
@@ -1287,7 +1315,25 @@ function beginGrab(paper, e) {
   renderer.domElement.style.cursor = "grabbing";
 }
 
+const _spotRay = new THREE.Raycaster();
+const _spotPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+function shotSpot(out) {
+  const y = restCenterY + GRAB_LIFT + SHOT_SPOT_LIFT;
+  _spotRay.setFromCamera(new THREE.Vector2(0, 1 - 2 * SHOT_SPOT_SCREEN_Y), camera);
+  _spotPlane.constant = -y;
+  if (!_spotRay.ray.intersectPlane(_spotPlane, out)) out.set(0, y, 1);
+  out.x = 0;
+  out.z = THREE.MathUtils.clamp(out.z, 0.2, stageBounds.maxZ + 0.6); // may float a little past the floor's front edge
+  return out;
+}
+
 function updateGrabTarget(paper, e) {
+  if (HOOP && hoopArmed) {
+    // Shooting: the ball holds the free-throw spot; the pointer only supplies the flick
+    shotSpot(paper.grab.target);
+    recordScreenSamples(paper, e);
+    return;
+  }
   updatePointer(e);
   raycaster.setFromCamera(pointer, camera);
   grabPlane.normal.set(0, 1, 0);
@@ -1300,9 +1346,95 @@ function updateGrabTarget(paper, e) {
   );
   // Keep a short history of where the pointer was, so a release can measure the flick itself
   // (independent of frame rate and of how far the ball lags behind the pointer).
+  recordScreenSamples(paper, e);
   const samples = paper.grab.samples;
-  samples.push({ t: performance.now(), x: grabHitPoint.x, z: grabHitPoint.z });
+  samples.push({ t: e.timeStamp || performance.now(), x: grabHitPoint.x, z: grabHitPoint.z });
   while (samples.length > 1 && samples[0].t < samples[samples.length - 1].t - FLICK_WINDOW_MS) samples.shift();
+}
+
+// Screen-space pointer history for flick detection. Uses the event's own timestamps and the
+// browser's coalesced sub-frame points, so a flick reads correctly even when frames are slow
+// (pointermove is only dispatched once per rendered frame).
+function recordScreenSamples(paper, e) {
+  const list = paper.grab.screen || (paper.grab.screen = []);
+  const events = typeof e.getCoalescedEvents === "function" ? e.getCoalescedEvents() : [];
+  for (const c of events.length ? events : [e]) {
+    const t = c.timeStamp || e.timeStamp || performance.now();
+    if (list.length && t <= list[list.length - 1].t) continue;
+    list.push({ t, sx: c.clientX, sy: c.clientY });
+  }
+  while (list.length > 2 && list[0].t < list[list.length - 1].t - FLICK_WINDOW_MS) list.shift();
+}
+
+// Pointer velocity on screen over the last FLICK_WINDOW_MS (px per second; y is down).
+function screenFlick(paper) {
+  const list = paper.grab && paper.grab.screen;
+  if (!list || list.length < 2) return null;
+  const b = list[list.length - 1];
+  let i = list.findIndex((p) => p.t >= b.t - FLICK_WINDOW_MS);
+  if (i < 0) i = 0;
+  // Slow frames (low-end phones) may leave just one point in the window: reach back one more,
+  // as long as it's recent enough to still be part of the same motion.
+  if (i > 0 && list.length - i < 3 && b.t - list[i - 1].t < FLICK_SLOW_FRAME_MS) i -= 1;
+  const a = list[i];
+  const dt = (b.t - a.t) / 1000;
+  if (dt < 0.008) return null;
+  return { x: (b.sx - a.sx) / dt, y: (b.sy - a.sy) / dt };
+}
+
+const _projA = new THREE.Vector3();
+function toScreen(v) {
+  _projA.copy(v).project(camera);
+  const r = renderer.domElement.getBoundingClientRect();
+  return { x: ((_projA.x + 1) / 2) * r.width, y: ((1 - _projA.y) / 2) * r.height };
+}
+
+// An upward flick while the hoop is down becomes a lob aimed at the rim. Returns the launch
+// velocity, or null when the flick isn't a shot (sideways/downward drags still just toss).
+function aimedShot(paper) {
+  const f = screenFlick(paper);
+  lastFlick = f && { x: Math.round(f.x), y: Math.round(f.y) };
+  if (!f || -f.y < SHOT_MIN_UP_PX_S) return null;
+  const b = paper.body.position;
+  const rim = new THREE.Vector3(hoop.center.x, hoop.center.y, hoop.center.z);
+  const sBall = toScreen(b);
+  const sRim = toScreen(rim);
+  const toRim = { x: sRim.x - sBall.x, y: sRim.y - sBall.y };
+  const screenDist = Math.max(40, Math.hypot(toRim.x, toRim.y));
+
+  // Power: flick speed relative to the ideal for this distance, with a forgiving zone around 1
+  const raw = Math.hypot(f.x, f.y) / (screenDist * SHOT_IDEAL_PX_PER_SCREEN_DIST);
+  let power;
+  if (raw < SHOT_POWER_OK_MIN) power = 0.4 + (0.45 * raw) / SHOT_POWER_OK_MIN; // short
+  else if (raw > SHOT_POWER_OK_MAX) power = 1.15 + (raw - SHOT_POWER_OK_MAX) * 0.25; // long
+  else power = 1 + (raw - 1) * SHOT_POWER_KEEP;
+  power = THREE.MathUtils.clamp(power, 0.35, 1.8);
+
+  // Angle: flick direction vs. the direction to the rim on screen; small errors forgiven
+  let err = Math.atan2(f.y, f.x) - Math.atan2(toRim.y, toRim.x);
+  err = Math.atan2(Math.sin(err), Math.cos(err));
+  if (Math.abs(err) < SHOT_ANGLE_SNAP) err *= SHOT_ANGLE_SNAP_KEEP;
+  err = THREE.MathUtils.clamp(err, -0.9, 0.9);
+
+  // Aim point in the world: along the floor direction to the rim, scaled by power, offset sideways
+  const dx = rim.x - b.x;
+  const dz = rim.z - b.z;
+  const dist = Math.max(0.2, Math.hypot(dx, dz));
+  const ux = dx / dist;
+  const uz = dz / dist;
+  const reach = dist * power;
+  const side = reach * Math.tan(err); // screen-right flick error → world right of the line
+  const tx = b.x + ux * reach + -uz * side;
+  const tz = b.z + uz * reach + ux * side;
+
+  // Ballistic lob that peaks SHOT_ARC above the higher of the release point and the rim, then
+  // comes down through rim height at the aim point.
+  const g = -physicsWorld.gravity.y;
+  const apex = Math.max(b.y, rim.y) + SHOT_ARC;
+  const vy = Math.sqrt(2 * g * (apex - b.y));
+  const t = vy / g + Math.sqrt((2 * (apex - rim.y)) / g);
+  lastAim = { from: b.toArray().map((n) => +n.toFixed(2)), target: [+tx.toFixed(2), +rim.y.toFixed(2), +tz.toFixed(2)], raw: +(Math.hypot(f.x, f.y) / (screenDist * SHOT_IDEAL_PX_PER_SCREEN_DIST)).toFixed(2), power: +power.toFixed(2), errDeg: +THREE.MathUtils.radToDeg(err).toFixed(1), t: +t.toFixed(2) };
+  return { x: (tx - b.x) / t, y: vy, z: (tz - b.z) / t };
 }
 
 // Pointer velocity over the last FLICK_WINDOW_MS, on the grab plane (world units per second).
@@ -1319,6 +1451,31 @@ function flickVelocity(paper) {
 function releaseGrab(paper, withThrow) {
   if (!paper || paper.state !== "grabbed") return;
   const body = paper.body;
+  let shot = null;
+  if (HOOP && hoopArmed && withThrow) {
+    // A ball flicked straight off the floor would lose speed to floor friction on the first
+    // step; start aimed shots just clear of it (the aim is computed from the lifted position).
+    const saved = body.position.y;
+    body.position.y = Math.max(saved, restCenterY + 0.06);
+    shot = aimedShot(paper);
+    if (!shot) body.position.y = saved;
+  }
+  if (shot) {
+    body.type = CANNON.Body.DYNAMIC;
+    body.mass = PAPER_MASS;
+    body.updateMassProperties();
+    body.linearDamping = 0; // no drag in flight, so the lob lands where it was aimed
+    body.velocity.set(shot.x, shot.y, shot.z);
+    body.angularVelocity.set(randomRange(-4, 4), randomRange(-2, 2), randomRange(-4, 4));
+    body.wakeUp();
+    syncMeshToBody(paper);
+    paper.state = "rolling";
+    paper.time = 0;
+    paper.throw = { settleTimer: 0, aimed: true }; // no floor friction until it has taken off
+    markShot(paper);
+    renderer.domElement.style.cursor = "grab";
+    return;
+  }
   // Throw with the pointer's own flick velocity; fall back to the spring velocity (e.g. no samples)
   const flick = withThrow ? flickVelocity(paper) : null;
   let vx = withThrow ? (flick ? flick.x : body.velocity.x) : 0;
@@ -1341,7 +1498,6 @@ function releaseGrab(paper, withThrow) {
   paper.state = "rolling";
   paper.time = 0;
   paper.throw = { settleTimer: 0 };
-  if (HOOP && hoopArmed && withThrow && speed >= SHOT_MIN_SPEED) markShot(paper);
   renderer.domElement.style.cursor = "grab";
 }
 
@@ -1457,13 +1613,16 @@ function updatePaperMotion(paper, dt) {
   if (paper.state === "rolling") {
     paper.time += dt;
     const grounded = isOnGround(paper.body);
-    if (grounded) applyRollingResistance(paper.body, dt);
+    if (!grounded) paper.throw.airborne = true;
+    // An aimed shot launches from the floor: skip friction until it has actually taken off
+    if (grounded && (!paper.throw.aimed || paper.throw.airborne)) applyRollingResistance(paper.body, dt);
     syncMeshToBody(paper);
     const speed = paper.body.velocity.lengthSquared() + paper.body.angularVelocity.lengthSquared() * 0.02;
     paper.throw.settleTimer = grounded && speed < ROLL_SETTLE_SPEED ? paper.throw.settleTimer + dt : 0;
     if (paper.throw.settleTimer > 0.35) {
       paper.state = "closed";
       paper.time = 0;
+      paper.body.linearDamping = BALL_DAMPING; // restore drag after an aimed shot
     }
     return;
   }
@@ -1479,8 +1638,15 @@ section.__stage = () => ({
   current,
   pending: pendingArrival && pendingArrival.index,
   papers: papers.map((p) => p && p.state),
+  lastFlick,
+  lastAim,
+  // pause rendering (tests): lets scripted pointer events arrive at real-device timing
+  pause: (on) => setRunning(!on && visible && !document.hidden),
+  spot: hoop ? shotSpot(new THREE.Vector3()).toArray() : null,
+  pointer: pointerState ? { grabbing: pointerState.grabbing, paper: pointerState.paper && pointerState.paper.page.index } : null,
   score: { ...score },
   ballRadius: collisionRadius,
+  rimScreen: hoop ? (() => { const r = renderer.domElement.getBoundingClientRect(); const p = toScreen(new THREE.Vector3(hoop.center.x, hoop.center.y, hoop.center.z)); return { x: r.left + p.x, y: r.top + p.y }; })() : null,
   hoop: hoop ? { ...hoop.center, r: hoop.rimRadius, shown: hoopShown, armed: hoopArmed, visible: hoop.group.visible, meshY: +hoop.group.position.y.toFixed(2) } : null,
   activeOpacity: activePaper ? activePaper.material.opacity : null,
   throwLift: HOOP && physicsWorld ? throwLift() : null,
@@ -1493,7 +1659,7 @@ section.__stage = () => ({
   screen: (i) => {
     const p = papers[i];
     if (!p) return null;
-    const v = p.mesh.position.clone().project(camera);
+    const v = new THREE.Vector3(p.body.position.x, p.body.position.y, p.body.position.z).project(camera); // ball centre
     const r = renderer.domElement.getBoundingClientRect();
     return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
   },
