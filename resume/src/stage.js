@@ -62,6 +62,8 @@ const WALL_Z = -1.1;
 const OPEN_DISTANCE = 1.5;
 const OPEN_HEIGHT_RATIO = 0.9;
 const OPEN_WIDTH_RATIO = 0.94;
+const OPEN_HUD_GAP_PX = 14; // fullscreen: space between the HUD bar and the open sheet
+const OPEN_BOTTOM_GAP_PX = 24;
 const CLOSED_SCALE = 0.82;
 const OPEN_DURATION = 1.15;
 const DISCARD_DURATION = 1.25;
@@ -842,10 +844,17 @@ function computeOpenPose() {
   );
   const viewH = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5)) * OPEN_DISTANCE;
   const viewW = viewH * camera.aspect;
-  const scale = Math.min(
-    (viewH * OPEN_HEIGHT_RATIO) / flatSize.depth,
-    (viewW * OPEN_WIDTH_RATIO) / flatSize.width,
-  );
+  // Fullscreen: fit the sheet into the space below the HUD bar and centre it there
+  let heightShare = OPEN_HEIGHT_RATIO;
+  const h = container.clientHeight;
+  if (FULL && hudEl && h) {
+    const top = hudEl.getBoundingClientRect().bottom - container.getBoundingClientRect().top + OPEN_HUD_GAP_PX;
+    const bottom = h - OPEN_BOTTOM_GAP_PX;
+    heightShare = Math.max(0.5, (bottom - top) / h);
+    const shift = 0.5 - (top + bottom) / 2 / h; // + moves up, − moves down (share of view height)
+    position.addScaledVector(zAxis, shift * viewH);
+  }
+  const scale = Math.min((viewH * heightShare) / flatSize.depth, (viewW * OPEN_WIDTH_RATIO) / flatSize.width);
   return { position, quaternion, scale };
 }
 

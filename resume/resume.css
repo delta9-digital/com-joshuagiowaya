@@ -592,3 +592,99 @@ a {
   font-size: var(--jg-text-xs);
   color: var(--jg-gray-300);
 }
+
+/* ---------- HUD: logo left · pages/score centre · menu right (v2) ---------- */
+.rs-stage--full .rs-hud {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+.rs-hud__left,
+.rs-hud__center,
+.rs-hud__right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  pointer-events: auto;
+}
+.rs-hud__right {
+  justify-content: flex-end;
+}
+.rs-hud__center {
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: center;
+}
+.rs-stage--full .rs-hud__counter,
+.rs-stage--full .rs-hud__score,
+.rs-stage--full .rs-hud__score + .rs-hud__counter {
+  margin: 0;
+}
+.rs-stage--full .rs-hud__counter {
+  color: var(--jg-white);
+  font-size: var(--jg-text-lg);
+}
+.rs-stage--full .rs-hud__score {
+  font-size: var(--jg-text-xs);
+  color: var(--jg-gray-300);
+}
+
+/* ---------- menu overlay: frosted glass (v2) ---------- */
+.rs-stage--full .rs-menu {
+  background: rgba(29, 27, 27, 0.28);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.rs-stage--full .rs-menu__panel {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 2px; /* brand: corners stay (almost) square */
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.rs-stage--full .rs-menu__panel::before {
+  /* cyan accent hairline where the solid top border used to be */
+  content: "";
+  display: block;
+  height: 2px;
+  margin: -2rem clamp(-2.5rem, -4vw, -1.25rem) 0;
+  background: linear-gradient(90deg, transparent, var(--jg-cyan), transparent);
+  opacity: 0.8;
+}
+.rs-stage--full .rs-menu__close,
+.rs-stage--full .rs-menu__toc .rs-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--jg-surface-bright);
+}
+.rs-stage--full .rs-menu__close:hover,
+.rs-stage--full .rs-menu__toc .rs-chip:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--jg-cyan);
+  color: var(--jg-white);
+}
+.rs-stage--full .rs-menu__toc .rs-chip.is-active {
+  background: var(--jg-cyan);
+  border-color: var(--jg-cyan);
+  color: var(--jg-ink);
+}
+.rs-stage--full .rs-menu__nav .rs-nav:not(.jg-btn--cta) {
+  background: rgba(29, 27, 27, 0.55);
+}
+.rs-stage--full .rs-menu__hint {
+  color: rgba(244, 243, 243, 0.78);
+}
+/* No backdrop-filter support: fall back to a solid dark panel so text stays legible */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .rs-stage--full .rs-menu {
+    background: rgba(29, 27, 27, 0.85);
+  }
+  .rs-stage--full .rs-menu__panel {
+    background: rgba(64, 65, 67, 0.96);
+  }
+}
