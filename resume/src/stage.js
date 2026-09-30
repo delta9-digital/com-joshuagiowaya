@@ -95,13 +95,15 @@ const FLICK_SLOW_FRAME_MS = 250;
 // (a flick near SHOT_IDEAL_PX_PER_SCREEN_DIST × the on-screen distance to the rim is "right"),
 // flick angle sets left/right, and near-misses are pulled toward a make.
 const SHOT_MIN_UP_PX_S = 250; // an upward flick at least this fast (px/s) is a shot
-const SHOT_IDEAL_PX_PER_SCREEN_DIST = 3.2; // ideal flick speed = on-screen distance to rim × this, per second
-// People's flick speeds vary a lot, so power is forgiving: anything in [OK_MIN, OK_MAX] of the
-// ideal lands on target (keeping a sliver of the error so shots aren't identical); only a feeble
-// flick falls short and a wild one flies long.
-const SHOT_POWER_OK_MIN = 0.4;
-const SHOT_POWER_OK_MAX = 2.1;
-const SHOT_POWER_KEEP = 0.06;
+const SHOT_IDEAL_PX_PER_SCREEN_DIST = 2.5; // ideal flick speed = on-screen distance to rim × this, per second
+// Strength matters: the throw's reach scales with flick speed (soft falls short, hard sails long
+// or off the backboard), and its arc rises with it. Only a sweet spot of ±SHOT_POWER_SWEET around
+// the ideal is pulled toward a make.
+const SHOT_POWER_SWEET = 0.2;
+const SHOT_POWER_SWEET_KEEP = 0.25; // share of the error kept inside the sweet spot
+const SHOT_POWER_LONG_GAIN = 2.2; // past the sweet spot, extra strength sends it this much farther
+const SHOT_POWER_MIN = 0.3;
+const SHOT_POWER_MAX = 2.4;
 const SHOT_ANGLE_SNAP = THREE.MathUtils.degToRad(18); // angle errors below this are forgiven …
 const SHOT_ANGLE_SNAP_KEEP = 0.2; // … keeping this share
 const SHOT_ARC = 0.6; // apex height above the higher of release point and rim (world units)
@@ -1404,11 +1406,10 @@ function aimedShot(paper) {
 
   // Power: flick speed relative to the ideal for this distance, with a forgiving zone around 1
   const raw = Math.hypot(f.x, f.y) / (screenDist * SHOT_IDEAL_PX_PER_SCREEN_DIST);
-  let power;
-  if (raw < SHOT_POWER_OK_MIN) power = 0.4 + (0.45 * raw) / SHOT_POWER_OK_MIN; // short
-  else if (raw > SHOT_POWER_OK_MAX) power = 1.15 + (raw - SHOT_POWER_OK_MAX) * 0.25; // long
-  else power = 1 + (raw - 1) * SHOT_POWER_KEEP;
-  power = THREE.MathUtils.clamp(power, 0.35, 1.8);
+  let power = raw;
+  if (Math.abs(raw - 1) < SHOT_POWER_SWEET) power = 1 + (raw - 1) * SHOT_POWER_SWEET_KEEP;
+  else if (raw > 1) power = 1 + (raw - 1) * SHOT_POWER_LONG_GAIN; // overhit: clearly long
+  power = THREE.MathUtils.clamp(power, SHOT_POWER_MIN, SHOT_POWER_MAX);
 
   // Angle: flick direction vs. the direction to the rim on screen; small errors forgiven
   let err = Math.atan2(f.y, f.x) - Math.atan2(toRim.y, toRim.x);
@@ -1430,7 +1431,10 @@ function aimedShot(paper) {
   // Ballistic lob that peaks SHOT_ARC above the higher of the release point and the rim, then
   // comes down through rim height at the aim point.
   const g = -physicsWorld.gravity.y;
-  const apex = Math.max(b.y, rim.y) + SHOT_ARC;
+  // Arc by strength: the ideal flick is a clean lob; a soft one is lower and falls short; a hard
+  // one is a flat line drive that clangs off the back rim/board and away (a high lob would bank in)
+  const arc = power <= 1 ? 0.55 + 0.45 * power : Math.max(0.3, 1 - 0.7 * (power - 1));
+  const apex = Math.max(b.y, rim.y) + SHOT_ARC * arc;
   const vy = Math.sqrt(2 * g * (apex - b.y));
   const t = vy / g + Math.sqrt((2 * (apex - rim.y)) / g);
   lastAim = { from: b.toArray().map((n) => +n.toFixed(2)), target: [+tx.toFixed(2), +rim.y.toFixed(2), +tz.toFixed(2)], raw: +(Math.hypot(f.x, f.y) / (screenDist * SHOT_IDEAL_PX_PER_SCREEN_DIST)).toFixed(2), power: +power.toFixed(2), errDeg: +THREE.MathUtils.radToDeg(err).toFixed(1), t: +t.toFixed(2) };

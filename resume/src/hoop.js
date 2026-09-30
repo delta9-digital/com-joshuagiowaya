@@ -11,6 +11,9 @@ const RIM_SEGMENTS = 16;
 const RIM_TUBE = 0.018;
 const COLLIDER_R = 0.022;
 const BOARD_T = 0.04;
+// Gap between backboard and rim. Like a real hoop, a hard shot that hits the board can drop
+// behind the rim instead of always rattling in.
+const RIM_GAP = 0.2;
 
 // Rasterises an SVG into a texture. SVGs without width/height get them from the viewBox so the
 // browser gives the image a real size.
@@ -63,7 +66,7 @@ export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, 
   const R = ballRadius * 1.9; // rim inner radius
   const boardZ = wallZ + BOARD_T / 2 + 0.005;
   const boardFaceZ = boardZ + BOARD_T / 2;
-  const rimZ = boardFaceZ + 0.03 + R + RIM_TUBE; // rim stands off the board on a short bracket
+  const rimZ = boardFaceZ + RIM_GAP + R + RIM_TUBE; // rim stands off the board on a bracket
   const bw = R * 2.8;
   const bh = R * 1.8;
   const boardY = R * 0.75; // board center, relative to rim height
@@ -131,11 +134,15 @@ export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, 
 
   // ---------- physics ----------
   const hoopMat = new CANNON.Material("hoop");
-  world.addContactMaterial(new CANNON.ContactMaterial(paperMaterial, hoopMat, { friction: 0.4, restitution: 0.45 }));
+  world.addContactMaterial(new CANNON.ContactMaterial(paperMaterial, hoopMat, { friction: 0.2, restitution: 0.75 }));
+  // The backboard is springier than paper would really be, so an overpowered shot kicks back out
+  // instead of dying against the board and dropping straight through the rim.
+  const boardMat = new CANNON.Material("backboard");
+  world.addContactMaterial(new CANNON.ContactMaterial(paperMaterial, boardMat, { friction: 0.05, restitution: 0.9 }));
 
   const boardBody = new CANNON.Body({
     mass: 0,
-    material: hoopMat,
+    material: boardMat,
     shape: new CANNON.Box(new CANNON.Vec3(bw / 2, bh / 2, BOARD_T / 2)),
   });
   world.addBody(boardBody);
