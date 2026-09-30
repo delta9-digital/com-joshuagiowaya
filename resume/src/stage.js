@@ -520,11 +520,21 @@ function randomRange(min, max) {
   return min + Math.random() * (max - min);
 }
 
-function spawnPosition() {
+// Which side of the stage a page belongs on: even pages left, odd pages right, so the pile
+// spreads beside the open sheet and the centre lane stays clear.
+const sideOf = (page) => (page.index % 2 === 0 ? -1 : 1);
+
+function spawnPosition(side = 0) {
   const margin = collisionRadius * 1.3;
+  const lane = collisionRadius * 1.5; // keep clear of the centre line
   const pos = new THREE.Vector3(0, restMeshY, 0);
   for (let attempt = 0; attempt < 40; attempt++) {
-    pos.x = randomRange(stageBounds.minX + margin, stageBounds.maxX - margin);
+    pos.x =
+      side < 0
+        ? randomRange(stageBounds.minX + margin, -lane)
+        : side > 0
+          ? randomRange(lane, stageBounds.maxX - margin)
+          : randomRange(stageBounds.minX + margin, stageBounds.maxX - margin);
     pos.z = randomRange(stageBounds.minZ + margin, stageBounds.maxZ - margin);
     const clear = papers.every((p) => {
       if (!p) return true; // read mode: unread pages have no paper yet
@@ -549,7 +559,7 @@ function spawnPaper(page, dropIn, dropHeight = randomRange(3.5, 6.5)) {
   const base = createPaperMesh(material);
   base.mesh.castShadow = true;
   base.mesh.rotation.set(0, Math.PI + randomRange(-0.25, 0.25), randomRange(-0.18, 0.18));
-  base.mesh.position.copy(spawnPosition());
+  base.mesh.position.copy(spawnPosition(sideOf(page)));
   base.mesh.scale.setScalar(CLOSED_SCALE);
   scene.add(base.mesh);
 
@@ -824,12 +834,13 @@ function startOpen(paper) {
 }
 
 // direction: -1 tosses to the left (paging forward), +1 to the right (paging back)
-function startDiscard(paper, direction) {
+// Crumples the open sheet and tosses it to its side of the stage (see sideOf), a little backward.
+function startDiscard(paper) {
   if (paper.state === "discarding" || paper.state === "rolling") return;
   const dir = new THREE.Vector3(
-    direction * randomRange(0.35, 1),
+    sideOf(paper.page) * randomRange(0.75, 1),
     0,
-    randomRange(-1.3, -0.45),
+    randomRange(-0.55, 0.05),
   ).normalize();
   paper.material.opacity = 1;
   paper.material.transparent = false;
@@ -862,7 +873,7 @@ function goTo(index) {
 
 // Pile mode: every sheet already exists as a ball; swap which one is open.
 function goToPile(index) {
-  if (activePaper) startDiscard(activePaper, index > current ? -1 : 1);
+  if (activePaper) startDiscard(activePaper);
   activePaper = null;
   const target = papers[index];
   if (!target) return; // finished — everything is on the pile
@@ -890,7 +901,7 @@ function goToRead(index) {
       if (!papers[i]) spawnPaper(pages[i], true, 3 + (i - current) * 0.5);
     }
     if (index >= pages.length) {
-      if (leaving) startDiscard(leaving, -1);
+      if (leaving) startDiscard(leaving);
       return; // finished — nothing else to open
     }
     if (!leaving) {
@@ -898,7 +909,7 @@ function goToRead(index) {
       return;
     }
     // The finished sheet is crumpled and tossed; the next one arrives once it has landed.
-    startDiscard(leaving, -1);
+    startDiscard(leaving);
     const cancel = awaitLanding(leaving, () => {
       pendingArrival = null;
       activePaper = spawnOpen(pages[index]);
