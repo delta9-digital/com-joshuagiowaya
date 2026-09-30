@@ -32,6 +32,10 @@
       <div class="rs-stage__viewport" tabindex="0" aria-describedby="stage-help">
         <div id="stage" class="rs-stage__canvas" aria-hidden="true"></div>
         <p class="rs-stage__loading jg-heading" id="stage-loading">Loading paper…</p>
+        <div class="rs-scroll" aria-hidden="true">
+          <button type="button" class="rs-scroll__btn" data-nav="up" tabindex="-1" title="Previous page">▲</button>
+          <button type="button" class="rs-scroll__btn" data-nav="down" tabindex="-1" title="Next page">▼</button>
+        </div>
       </div>
 
       <div class="rs-stage__bar">
@@ -52,7 +56,7 @@
       </nav>
 
       <p id="stage-help" class="rs-stage__hint">
-        Use Back/Next or the arrow keys, swipe, or click the open sheet when you finish a page — it gets crumpled onto the floor. Click a crumpled page to go back to it; drag one to toss it.
+        Scroll, use the ▲▼ or Back/Next buttons, the arrow keys, or swipe to turn pages. Each page you finish gets crumpled onto the floor, the last one included. Click a crumpled page to reopen it; drag one to toss it.
         <button type="button" class="rs-link" data-text-toggle aria-controls="resume" aria-expanded="false">Read as text</button>
       </p>
       <p class="rs-sr-only" role="status" data-status></p>

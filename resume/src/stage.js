@@ -4,8 +4,10 @@
 //   "pile" (default): every sheet starts as a crumpled ball on the floor. Back/Next unfolds the
 //          next sheet toward the camera and tosses the current one back onto the pile.
 //   "read": the floor starts empty and the first sheet is already open. Next crumples the sheet
-//          you finished onto the floor and the next one arrives open; Back unfolds the last
-//          crumpled sheet again and the unread one vanishes. Only read sheets are ever on the floor.
+//          you finished onto the floor and, once it lands, the next one arrives open; Back unfolds
+//          the last crumpled sheet again and the unread one vanishes. Only read sheets are ever on
+//          the floor. Next on the last sheet crumples it too, leaving nothing open ("finished").
+// Pages turn with Back/Next, ▲/▼ buttons, arrow keys, the mouse wheel, or a swipe.
 // data-sheet-headers="first" draws the dark header band only on a section's first sheet.
 // Scene, VAT playback, and physics are adapted from item-develop/paper-crumple-demo (MIT).
 // ==================================================
@@ -21,8 +23,8 @@ const section = document.querySelector(".rs-stage");
 const viewport = section.querySelector(".rs-stage__viewport");
 const container = document.getElementById("stage");
 const loadingEl = document.getElementById("stage-loading");
-const prevBtn = section.querySelector('[data-nav="prev"]');
-const nextBtn = section.querySelector('[data-nav="next"]');
+const prevBtns = section.querySelectorAll('[data-nav="prev"], [data-nav="up"]');
+const nextBtns = section.querySelectorAll('[data-nav="next"], [data-nav="down"]');
 const counterEl = section.querySelector("[data-counter]");
 const labelEl = section.querySelector("[data-label]");
 const tocEl = section.querySelector("[data-toc]");
@@ -50,6 +52,9 @@ const DISCARD_DURATION = 1.25;
 const ARRIVE_DURATION = 0.7; // read mode: a fresh sheet fading into the open pose
 const VANISH_DURATION = 0.45; // read mode: an unread sheet / skipped ball fading away
 const ARRIVE_LIFT = 0.45; // how far above the open pose a fresh sheet starts
+const LAND_TIMEOUT_MS = 2500; // read mode: arrive anyway if the tossed sheet never reports landing
+const WHEEL_COOLDOWN_MS = 900; // one page per wheel gesture
+const WHEEL_MIN_DELTA = 8;
 const SPEED = reduceMotion ? 4 : 1.5;
 const OPEN_FRAME = 1.5; // VAT frame shown when open — near 0 is flat, a little higher keeps some crinkle
 const ROLL_LINEAR_RESISTANCE = 2.6;
@@ -74,7 +79,8 @@ let animData = null;
 let pages = [];
 const papers = [];
 let activePaper = null;
-let current = -1;
+let current = -1; // index of the open page; pages.length once the last page has been crumpled
+let pendingArrival = null; // read mode: { index, cancel } while waiting for a tossed sheet to land
 let pointerState = null;
 let prevTime = null;
 let running = false;
@@ -470,6 +476,26 @@ function startVanish(paper, lift) {
     : null;
 }
 
+// Read mode: run `cb` once a tossed sheet touches the floor (or another ball), with a fallback timer.
+// Returns a cancel function.
+function awaitLanding(paper, cb) {
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    paper.body.removeEventListener("collide", finish);
+    clearTimeout(timer);
+    cb();
+  };
+  const timer = setTimeout(finish, reduceMotion ? 0 : LAND_TIMEOUT_MS);
+  paper.body.addEventListener("collide", finish);
+  return () => {
+    done = true;
+    paper.body.removeEventListener("collide", finish);
+    clearTimeout(timer);
+  };
+}
+
 // ==================================================
 // Physics helpers (from the demo)
 // ==================================================
@@ -658,9 +684,10 @@ function startDiscard(paper, direction) {
 // ==================================================
 // Navigation
 // ==================================================
+// index === pages.length means "finished": every page is crumpled on the floor, nothing is open.
 function goTo(index) {
   if (!animData || !pages.length) return;
-  index = Math.max(0, Math.min(index, pages.length - 1));
+  index = Math.max(0, Math.min(index, pages.length));
   if (index === current) return;
   if (MODE === "read") goToRead(index);
   else goToPile(index);
@@ -670,9 +697,10 @@ function goTo(index) {
 
 // Pile mode: every sheet already exists as a ball; swap which one is open.
 function goToPile(index) {
-  const target = papers[index];
-  if (!target) return;
   if (activePaper) startDiscard(activePaper, index > current ? -1 : 1);
+  activePaper = null;
+  const target = papers[index];
+  if (!target) return; // finished — everything is on the pile
   startOpen(target);
   activePaper = target;
 }
@@ -680,15 +708,40 @@ function goToPile(index) {
 // Read mode: the floor holds exactly the sheets before `current`, as balls.
 function goToRead(index) {
   const leaving = activePaper;
+  activePaper = null;
+
+  // Navigated again before the next sheet arrived: that sheet was never read. Moving on past it
+  // drops it on the floor like any skipped page; moving back just forgets it.
+  if (pendingArrival) {
+    pendingArrival.cancel();
+    const skipped = pendingArrival.index;
+    pendingArrival = null;
+    if (index > skipped && !papers[skipped]) spawnPaper(pages[skipped], true);
+  }
+
   if (index > current) {
-    if (leaving) startDiscard(leaving, -1);
     // Skipped sheets land on the floor as read, raining in one after another.
     for (let i = current + 1; i < index; i++) {
       if (!papers[i]) spawnPaper(pages[i], true, 3 + (i - current) * 0.5);
     }
-    activePaper = spawnOpen(pages[index]);
+    if (index >= pages.length) {
+      if (leaving) startDiscard(leaving, -1);
+      return; // finished — nothing else to open
+    }
+    if (!leaving) {
+      activePaper = spawnOpen(pages[index]);
+      return;
+    }
+    // The finished sheet is crumpled and tossed; the next one arrives once it has landed.
+    startDiscard(leaving, -1);
+    const cancel = awaitLanding(leaving, () => {
+      pendingArrival = null;
+      activePaper = spawnOpen(pages[index]);
+    });
+    pendingArrival = { index, cancel };
     return;
   }
+
   if (leaving) startVanish(leaving, true);
   for (let i = index + 1; i < current; i++) {
     if (papers[i]) startVanish(papers[i], false);
@@ -726,9 +779,10 @@ function buildControls() {
       tocEl.append(li);
     });
 
-  prevBtn.addEventListener("click", prev);
-  nextBtn.addEventListener("click", next);
+  prevBtns.forEach((b) => b.addEventListener("click", prev));
+  nextBtns.forEach((b) => b.addEventListener("click", next));
   viewport.addEventListener("keydown", onKey);
+  viewport.addEventListener("wheel", onWheel, { passive: false });
   section.querySelector(".rs-stage__bar").addEventListener("keydown", onKey);
 
   textToggle.addEventListener("click", () => {
@@ -742,28 +796,58 @@ function buildControls() {
 }
 
 function onKey(e) {
-  const keys = { ArrowRight: next, ArrowLeft: prev, Home: () => goTo(0), End: () => goTo(pages.length - 1) };
+  const keys = {
+    ArrowRight: next,
+    ArrowDown: next,
+    PageDown: next,
+    ArrowLeft: prev,
+    ArrowUp: prev,
+    PageUp: prev,
+    Home: () => goTo(0),
+    End: () => goTo(pages.length - 1),
+  };
   const action = keys[e.key];
   if (!action || e.altKey || e.ctrlKey || e.metaKey) return;
   e.preventDefault();
   action();
 }
 
+// Scrolling over the stage turns pages. At either end the event is left alone so the rest of the
+// site still scrolls normally.
+let wheelLockUntil = 0;
+function onWheel(e) {
+  if (!animData || !pages.length || Math.abs(e.deltaY) < WHEEL_MIN_DELTA) return;
+  const forward = e.deltaY > 0;
+  if (forward ? current >= pages.length : current <= 0) return;
+  e.preventDefault();
+  const now = performance.now();
+  if (now < wheelLockUntil) return;
+  wheelLockUntil = now + WHEEL_COOLDOWN_MS;
+  if (forward) next();
+  else prev();
+}
+
 function updateControls(announce) {
   const total = pages.length;
-  const page = pages[Math.max(current, 0)];
+  const finished = current >= total;
+  const page = finished ? null : pages[Math.max(current, 0)];
   const pad = (n) => String(n).padStart(2, "0");
-  counterEl.textContent = `${pad(Math.max(current, 0) + 1)} / ${pad(total)}`;
-  labelEl.textContent = page ? pageLabel(page) : "";
-  prevBtn.disabled = current <= 0;
-  nextBtn.disabled = current < 0 || current >= total - 1;
+  counterEl.textContent = `${pad(finished ? total : Math.max(current, 0) + 1)} / ${pad(total)}`;
+  labelEl.textContent = finished ? "All pages read" : page ? pageLabel(page) : "";
+  prevBtns.forEach((b) => (b.disabled = current <= 0));
+  nextBtns.forEach((b) => (b.disabled = current < 0 || finished));
   for (const chip of tocEl.querySelectorAll("button")) {
     const on = page && chip.dataset.section === String(page.sectionIndex);
     chip.classList.toggle("is-active", on);
     if (on) chip.setAttribute("aria-current", "step");
     else chip.removeAttribute("aria-current");
   }
-  if (announce && page) statusEl.textContent = `Page ${current + 1} of ${total}: ${pageLabel(page)}`;
+  if (!announce) return;
+  statusEl.textContent = finished
+    ? `All ${total} pages read. Use Back or click a crumpled page to reopen one.`
+    : page
+      ? `Page ${current + 1} of ${total}: ${pageLabel(page)}`
+      : "";
 }
 
 // ==================================================
@@ -1034,6 +1118,6 @@ function updatePaperMotion(paper, dt) {
 }
 
 // Test hook: lets a headless driver read the stage state (which page is open, what's on the floor).
-section.__stage = () => ({ current, papers: papers.map((p) => p && p.state) });
+section.__stage = () => ({ current, pending: pendingArrival && pendingArrival.index, papers: papers.map((p) => p && p.state) });
 
 boot();

@@ -334,3 +334,35 @@ a {
     white-space: normal;
   }
 }
+
+/* ---------- ▲▼ page controls on the stage edge (v2) ---------- */
+.rs-scroll {
+  position: absolute;
+  right: clamp(0.75rem, 2vw, 1.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.rs-scroll__btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  font: 0.8rem var(--jg-font-heading);
+  color: var(--jg-white);
+  background: var(--jg-ink);
+  border: 1px solid var(--jg-charcoal);
+  border-bottom: 3px solid var(--jg-orange);
+  cursor: pointer;
+}
+.rs-scroll__btn:hover {
+  border-color: var(--jg-cyan);
+  border-bottom-color: var(--jg-orange);
+}
+.rs-scroll__btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  border-color: var(--jg-charcoal);
+}
