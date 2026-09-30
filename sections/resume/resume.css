@@ -1,0 +1,144 @@
+/* JGDzine — Résumé section
+   Depends on the brand kit tokens + utilities in ds-bundle/styles.css (--jg-* vars, .jg-display, .jg-heading, .jg-diamond, .jg-btn).
+   Layout: dark header band with a diagonal bottom edge → light body with a diamond-marked timeline and a sidebar. */
+
+.jg-resume { position: relative; overflow: hidden; background: var(--jg-bg); color: var(--jg-text); }
+.jg-resume * { box-sizing: border-box; }
+.jg-resume__inner { max-width: 72rem; margin: 0 auto; padding-inline: clamp(1.25rem, 4vw, 3rem); }
+
+/* ---- Header band (dark, diagonal bottom edge) ---- */
+.jg-resume__head {
+  background: var(--jg-bg-dark);
+  color: var(--jg-text-on-dark);
+  padding: clamp(4rem, 8vw, 7rem) 0 clamp(6rem, 10vw, 9rem);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - clamp(2.5rem, 5vw, 4.5rem)), 0 100%);
+  position: relative;
+}
+/* faint ruled texture so the band isn't a flat slab */
+.jg-resume__head::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    repeating-linear-gradient(-35deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 14px);
+  mask-image: linear-gradient(90deg, transparent 35%, #000 100%);
+}
+.jg-resume__head .jg-resume__inner {
+  display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: clamp(2rem, 5vw, 5rem); align-items: center; position: relative;
+}
+.jg-resume__eyebrow {
+  font-family: var(--jg-font-heading); text-transform: uppercase; letter-spacing: 0.18em;
+  font-size: var(--jg-text-sm); color: var(--jg-accent); margin: 0 0 1rem;
+  display: inline-flex; align-items: center; gap: 0.75rem;
+}
+.jg-resume__eyebrow::before { content: ""; width: 0.55rem; height: 0.55rem; border: 2px solid var(--jg-accent); transform: rotate(45deg); }
+.jg-resume__title { font-size: var(--jg-text-hero); margin: 0 0 1.25rem; color: var(--jg-white); }
+.jg-resume__title em { font-style: normal; color: var(--jg-accent); }
+.jg-resume__intro {
+  font-weight: 300; font-size: var(--jg-text-lg); line-height: 1.5; max-width: 42ch;
+  color: var(--jg-gray-300); margin: 0 0 2rem;
+}
+.jg-resume__actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.jg-resume__actions .jg-btn { text-decoration: none; }
+.jg-resume__actions .jg-btn:not(.jg-btn--cta) { background: transparent; border: 2px solid var(--jg-gray-600); border-bottom-width: 3px; border-bottom-color: var(--jg-orange); }
+.jg-resume__actions .jg-btn:not(.jg-btn--cta):hover { background: var(--jg-charcoal); }
+
+/* stat diamonds — scattered on the right of the band */
+.jg-resume__stats { display: flex; justify-content: flex-end; gap: 1.5rem; flex-wrap: wrap; }
+.jg-resume__stats .jg-diamond { width: 6.25rem; height: 6.25rem; margin: 1rem; }
+.jg-resume__stats .jg-diamond:nth-child(2) { transform: rotate(45deg) translate(0.5rem, -1.5rem); }
+.jg-resume__stats .jg-diamond:nth-child(3) { transform: rotate(45deg) translate(-1rem, 1rem); }
+.jg-resume__stats .jg-diamond > * {
+  font-family: var(--jg-font-heading); text-transform: uppercase; letter-spacing: 0.06em;
+  text-align: center; line-height: 1.05; font-size: var(--jg-text-sm); margin: 0;
+}
+.jg-resume__stats .jg-diamond strong { display: block; font-size: var(--jg-text-xl); font-weight: 400; color: var(--jg-white); }
+/* solid diamond inverts on the dark band so it stays visible */
+.jg-resume__stats .jg-diamond--solid { background: var(--jg-surface-bright); border-color: var(--jg-surface-bright); color: var(--jg-gray-600); }
+.jg-resume__stats .jg-diamond--solid strong { color: var(--jg-ink); }
+
+/* ---- Body ---- */
+.jg-resume__body { padding: clamp(2rem, 4vw, 3rem) 0 clamp(4rem, 8vw, 6rem); }
+.jg-resume__body .jg-resume__inner {
+  display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: clamp(2.5rem, 6vw, 5rem);
+}
+
+/* section labels */
+.jg-resume__label {
+  font-size: var(--jg-text-lg); margin: 0 0 1.5rem; padding-bottom: 0.5rem; position: relative;
+}
+.jg-resume__label::after { content: ""; position: absolute; left: 0; bottom: 0; width: 2.5rem; height: 3px; background: var(--jg-accent); }
+
+/* ---- Timeline ---- */
+.jg-resume__timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+.jg-resume__timeline::before {
+  content: ""; position: absolute; left: 0.45rem; top: 0.6rem; bottom: 0; width: 2px;
+  background: linear-gradient(180deg, var(--jg-gray-300) 0 85%, transparent);
+}
+.jg-resume__entry { position: relative; padding: 0 0 2.75rem 2.25rem; }
+.jg-resume__entry:last-child { padding-bottom: 0; }
+.jg-resume__entry::before {
+  content: ""; position: absolute; left: 0; top: 0.35rem; width: 0.75rem; height: 0.75rem;
+  background: var(--jg-surface); border: 2px solid var(--jg-accent); transform: rotate(45deg);
+  transition: background 150ms ease;
+}
+.jg-resume__entry:hover::before { background: var(--jg-accent); }
+.jg-resume__entry--current::before { background: var(--jg-ink); border-color: var(--jg-ink); }
+.jg-resume__dates {
+  font-family: var(--jg-font-heading); text-transform: uppercase; letter-spacing: 0.12em;
+  font-size: var(--jg-text-xs); color: var(--jg-text-muted); margin: 0 0 0.35rem;
+}
+.jg-resume__entry--current .jg-resume__dates { color: var(--jg-ink); }
+.jg-resume__role { font-size: var(--jg-text-xl); margin: 0 0 0.25rem; }
+.jg-resume__org { margin: 0 0 0.85rem; font-weight: 600; font-size: var(--jg-text-base); }
+.jg-resume__org span { font-weight: 400; color: var(--jg-text-muted); }
+.jg-resume__org span::before { content: "\2014"; margin: 0 0.5rem; color: var(--jg-gray-300); }
+.jg-resume__bullets { margin: 0; padding-left: 1.1rem; max-width: 60ch; }
+.jg-resume__bullets li { margin-bottom: 0.4rem; }
+.jg-resume__bullets li::marker { color: var(--jg-accent); }
+
+/* ---- Sidebar ---- */
+.jg-resume__aside { display: grid; gap: 2.5rem; align-content: start; }
+.jg-resume__block { background: var(--jg-surface-bright); padding: 1.5rem; border-top: 3px solid var(--jg-ink); }
+.jg-resume__block .jg-resume__label { font-size: var(--jg-text-base); margin-bottom: 1rem; }
+.jg-resume__group { margin: 0 0 1rem; }
+.jg-resume__group:last-child { margin-bottom: 0; }
+.jg-resume__group-name {
+  font-family: var(--jg-font-heading); text-transform: uppercase; letter-spacing: 0.12em;
+  font-size: var(--jg-text-xs); color: var(--jg-text-muted); margin: 0 0 0.5rem;
+}
+.jg-resume__tags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.jg-resume__tags li {
+  font-family: var(--jg-font-heading); text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: var(--jg-text-xs); line-height: 1; padding: 0.45rem 0.6rem;
+  border: 1px solid var(--jg-ink); color: var(--jg-ink); background: var(--jg-white);
+}
+.jg-resume__tags li:hover { background: var(--jg-ink); color: var(--jg-white); }
+.jg-resume__edu { list-style: none; margin: 0; padding: 0; }
+.jg-resume__edu li { margin-bottom: 0.85rem; }
+.jg-resume__edu li:last-child { margin-bottom: 0; }
+.jg-resume__edu strong { display: block; font-weight: 600; }
+.jg-resume__edu span { color: var(--jg-text-muted); font-size: var(--jg-text-sm); }
+.jg-resume__contact { list-style: none; margin: 0; padding: 0; }
+.jg-resume__contact li { margin-bottom: 0.5rem; display: flex; gap: 0.75rem; align-items: baseline; }
+.jg-resume__contact li::before { content: ""; width: 0.4rem; height: 0.4rem; border: 1.5px solid var(--jg-accent); transform: rotate(45deg); flex: none; position: relative; top: -0.1em; }
+.jg-resume__contact a { color: var(--jg-ink); text-decoration: none; border-bottom: 1px solid var(--jg-accent); }
+.jg-resume__contact a:hover { color: var(--jg-accent); }
+
+/* ---- Responsive ---- */
+@media (max-width: 56rem) {
+  .jg-resume__head .jg-resume__inner,
+  .jg-resume__body .jg-resume__inner { grid-template-columns: 1fr; }
+  .jg-resume__stats { justify-content: flex-start; gap: 0.5rem; }
+  .jg-resume__stats .jg-diamond { width: 5.25rem; height: 5.25rem; margin: 0.9rem; }
+  .jg-resume__stats .jg-diamond:nth-child(n) { transform: rotate(45deg); }
+}
+
+/* ---- Reveal on scroll (progressive; content is visible without JS) ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .jg-resume.is-animated .jg-resume__entry { opacity: 0; transform: translateY(0.75rem); animation: jg-resume-rise 500ms ease forwards; }
+  .jg-resume.is-animated .jg-resume__entry:nth-child(2) { animation-delay: 120ms; }
+  .jg-resume.is-animated .jg-resume__entry:nth-child(3) { animation-delay: 240ms; }
+  .jg-resume.is-animated .jg-resume__entry:nth-child(4) { animation-delay: 360ms; }
+  @keyframes jg-resume-rise { to { opacity: 1; transform: none; } }
+}

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resume — Joshua Giowaya</title>
+  <meta name="description" content="Joshua Giowaya — Technical Engineering Lead and developer/designer in Minneapolis. 15+ years building interactive web products." />
+  <link rel="stylesheet" href="../ds-bundle/styles.css" />
+  <link rel="stylesheet" href="resume.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+        "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/",
+        "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <header class="rs-top">
+    <img class="rs-top__logo" src="../ds-bundle/components/Brand/Logo/jg-wht.svg" alt="" width="56" height="56" />
+    <h1 class="rs-top__title">
+      <span class="jg-heading rs-top__name">Joshua Giowaya</span>
+      <span class="jg-display">Resume</span>
+    </h1>
+  </header>
+
+  <main>
+    <!-- Paper viewer. Hidden until the 3D stage boots; every sheet is generated from #resume below. -->
+    <section class="rs-stage" aria-label="Resume on paper" hidden>
+      <div class="rs-stage__viewport" tabindex="0" aria-describedby="stage-help">
+        <div id="stage" class="rs-stage__canvas" aria-hidden="true"></div>
+        <p class="rs-stage__loading jg-heading" id="stage-loading">Loading paper…</p>
+      </div>
+
+      <div class="rs-stage__bar">
+        <button type="button" class="jg-btn rs-nav" data-nav="prev" aria-label="Previous page">
+          <span aria-hidden="true">←</span> Back
+        </button>
+        <p class="rs-stage__counter jg-heading" aria-hidden="true">
+          <span data-counter>01 / 01</span>
+          <span class="rs-stage__label" data-label></span>
+        </p>
+        <button type="button" class="jg-btn jg-btn--cta rs-nav" data-nav="next" aria-label="Next page">
+          Next <span aria-hidden="true">→</span>
+        </button>
+      </div>
+
+      <nav class="rs-stage__toc" aria-label="Resume sections">
+        <ol data-toc></ol>
+      </nav>
+
+      <p id="stage-help" class="rs-stage__hint">
+        Use Back/Next or the arrow keys, swipe, or click the open sheet to turn the page. Click a paper ball to jump to it; drag one to toss it.
+        <button type="button" class="rs-link" data-text-toggle aria-controls="resume" aria-expanded="false">Read as text</button>
+      </p>
+      <p class="rs-sr-only" role="status" data-status></p>
+    </section>
+
+    <!--
+      Resume source of truth. Read by src/pages.js to build the paper sheets, and shown as a plain
+      document when the stage can't run (no WebGL, reduced data, print) or via "Read as text".
+    -->
+    <article id="resume" class="rs-source">
+      <header class="rs-profile" data-section="profile">
+        <p class="rs-profile__name jg-display" data-title>Joshua Giowaya</p>
+        <p class="rs-profile__role jg-heading" data-subtitle>Technical Engineering Lead · Developer &amp; Designer</p>
+        <ul class="rs-profile__contact" data-meta>
+          <li><a href="mailto:joshuagiowaya@gmail.com">joshuagiowaya@gmail.com</a></li>
+          <li><a href="tel:+16126699349">612.669.9349</a></li>
+          <li>Minneapolis, MN</li>
+        </ul>
+      </header>
+
+      <section class="rs-block" data-section="summary">
+        <h2 class="jg-heading rs-block__title" data-title>Executive summary</h2>
+        <ul class="rs-bullets">
+          <li>15+ years creating interactive software products with valuable, intuitive user experiences.</li>
+          <li>Extensive experience with JavaScript, React, Angular, HTML, CSS, JSON, jQuery, PHP, and Node.</li>
+          <li>Implementing TDD, unit testing, and continuous integration.</li>
+          <li>Production-level experience with frameworks such as React, Backbone, and Angular.</li>
+          <li>Extensive knowledge of cross-browser and cross-device compatibility.</li>
+          <li>Designing and developing responsive websites and web applications from scratch or with Bootstrap, Foundation, and Material UI.</li>
+          <li>Optimizing websites for speed, analytics, and tracking SEO best practices.</li>
+          <li>Development life cycle and methodologies such as Agile and waterfall.</li>
+          <li>JavaScript modules, state management, and popular libraries including React, Angular, and Vue.</li>
+          <li>Debugging and troubleshooting existing code.</li>
+          <li>Firm understanding of object-oriented principles.</li>
+          <li>Self-motivated and dedicated; sets effective priorities to hit immediate and long-term goals and operational deadlines.</li>
+        </ul>
+      </section>
+
+      <section class="rs-block" data-section="skills">
+        <h2 class="jg-heading rs-block__title" data-title>Technical skills</h2>
+        <dl class="rs-skills">
+          <div>
+            <dt>Web technologies</dt>
+            <dd>HTML, CSS (SCSS, LESS), jQuery, AJAX, JavaScript (ES5, ES6, ESNext, TypeScript), React, React Native, Vue, Angular, Webpack, Node, Express, REST API, GraphQL, XML, JSON, state management (Redux, Context, Hooks), testing (Jest, Enzyme, Selenium), PHP, Python, EC2, Elasticsearch, Lambda, Docker</dd>
+          </div>
+          <div>
+            <dt>Web / application servers</dt>
+            <dd>Apache, Tomcat, IBM WebSphere, Oracle WebLogic, JBoss, Node</dd>
+          </div>
+          <div>
+            <dt>Databases</dt>
+            <dd>MySQL, MS SQL Server, MongoDB, Elasticsearch, Postgres</dd>
+          </div>
+          <div>
+            <dt>Operating systems</dt>
+            <dd>Windows, macOS, iOS, Android, Linux</dd>
+          </div>
+          <div>
+            <dt>Editors &amp; IDEs</dt>
+            <dd>VS Code, Sublime, WebStorm, PhpStorm</dd>
+          </div>
+          <div>
+            <dt>Version control</dt>
+            <dd>Git, SVN</dd>
+          </div>
+          <div>
+            <dt>Design tools</dt>
+            <dd>Adobe CS, Figma, Sketch, InVision</dd>
+          </div>
+          <div>
+            <dt>CMS</dt>
+            <dd>WordPress, Magento</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="rs-block" aria-labelledby="experience-title">
+        <h2 id="experience-title" class="jg-heading rs-block__title">Professional experience</h2>
+
+        <article class="rs-job" data-section="job">
+          <h3 class="rs-job__company jg-display" data-title>Yardstik</h3>
+          <p class="rs-job__role jg-heading" data-subtitle>Technical Engineering Lead</p>
+          <p class="rs-job__meta" data-meta><span>Nov 2022 – Present</span> <span>Minneapolis, MN</span></p>
+          <ul class="rs-bullets">
+            <li>Engage with executives and business partners to shape technical roadmaps and document technical use cases that drive product goals.</li>
+            <li>Lead a team of engineers across multiple locations, providing technical guidance and architectural direction that aligns products with technical and business requirements.</li>
+            <li>Accountable for the business and technical outcomes of projects owned by my team.</li>
+            <li>Mentor engineers to elevate core competency and increase team velocity.</li>
+            <li>Lead development of products ranging from web applications to in-store experiences (React, Vue, Svelte, REST, TypeScript, OAuth, Laravel, WordPress, MERN, Socket.IO).</li>
+            <li>Established the Git workflow, testing, and release process for continuous development and deployment.</li>
+            <li>Develop prototypes to prove the viability of technical direction for new initiatives and evolving products.</li>
+            <li>Crafted and enforce coding standards and best practices with linting, pre-commit checks, and code reviews.</li>
+            <li>Manage multiple software products across several brands, consistently delivering high-quality features on committed release dates.</li>
+            <li>Manage project and feature requests with Agile/Scrum and Jira to track requests and set priorities.</li>
+            <li>Partner with product design to create reusable design systems and pattern libraries.</li>
+            <li>Support and implement accessibility, data retention, and other compliance standards.</li>
+          </ul>
+        </article>
+
+        <article class="rs-job" data-section="job">
+          <h3 class="rs-job__company jg-display" data-title>Self Esteem Brands</h3>
+          <p class="rs-job__role jg-heading" data-subtitle>Technical Engineering Lead</p>
+          <p class="rs-job__meta" data-meta><span>Apr 2021 – Nov 2022</span> <span>Woodbury, MN</span></p>
+          <ul class="rs-bullets">
+            <li>Engaged with executives and business partners to shape technical roadmaps and document technical use cases that drive product goals.</li>
+            <li>Led a team of engineers across multiple locations, providing technical guidance and architectural direction that aligned products with technical and business requirements.</li>
+            <li>Accountable for the business and technical outcomes of projects owned by my team.</li>
+            <li>Mentored engineers to elevate core competency and increase team velocity.</li>
+            <li>Led development of products ranging from web applications to in-store experiences (React, Vue, Svelte, REST, TypeScript, OAuth, Laravel, WordPress, MERN, Socket.IO).</li>
+            <li>Established the Git workflow, testing, and release process for continuous development and deployment.</li>
+            <li>Developed prototypes to prove the viability of technical direction for new initiatives and evolving products.</li>
+            <li>Crafted and enforced coding standards and best practices with linting, pre-commit checks, and code reviews.</li>
+            <li>Managed multiple software products across several brands, consistently delivering high-quality features on committed release dates.</li>
+            <li>Managed project and feature requests with Agile/Scrum and Jira to track requests and set priorities.</li>
+            <li>Partnered with product design to create reusable design systems and pattern libraries.</li>
+            <li>Supported and implemented accessibility, data retention, and other compliance standards.</li>
+          </ul>
+        </article>
+
+        <article class="rs-job" data-section="job">
+          <h3 class="rs-job__company jg-display" data-title>Code42</h3>
+          <p class="rs-job__role jg-heading" data-subtitle>Sr. Software Engineer</p>
+          <p class="rs-job__meta" data-meta><span>Dec 2016 – 2021</span> <span>Minneapolis, MN</span></p>
+          <ul class="rs-bullets">
+            <li>Worked with internal stakeholders to define business requirements in an agile environment (Jira).</li>
+            <li>Collaborated with other developers to conduct code reviews and set documentation standards.</li>
+            <li>Created JavaScript functions and effects, primarily with jQuery and ES6.</li>
+            <li>Developed custom responsive WordPress themes with CSS3, jQuery, React, Twig, Angular, and custom WP plugins.</li>
+            <li>Built web applications that call REST data services, manage state with Redux, and render UI with React, Angular, and Backbone.</li>
+            <li>Represented the company as an evangelist at tech conferences, promoting our approach to web application development.</li>
+            <li>Paired with teammates to solve complex problems in code.</li>
+            <li>Implemented DRY, Atomic Design, and modular development strategies.</li>
+            <li>Consulted with internal and external teams on workflow, technology, and coding-standards decisions for each project (Jira, Confluence).</li>
+            <li>Assessed the best approach to each web application for cross-browser compatibility, SEO, accessibility, and security (CSS3, React, Angular, ES6, TypeScript, REST, Redux, OAuth, PHP).</li>
+            <li>Integrated CRUD functionality with databases (MySQL, MongoDB, Elasticsearch) through REST APIs.</li>
+          </ul>
+        </article>
+
+        <article class="rs-job" data-section="job">
+          <h3 class="rs-job__company jg-display" data-title>Linnihan Foy</h3>
+          <p class="rs-job__role jg-heading" data-subtitle>Lead Web &amp; Software Engineer</p>
+          <p class="rs-job__meta" data-meta><span>Sep 2014 – Dec 2020</span> <span>Minneapolis, MN</span></p>
+          <ul class="rs-bullets">
+            <li>Worked closely with the internal team to define business objectives, project scope, solution space, and design/development approach for knowledge research applications.</li>
+            <li>Used JavaScript, HTML5, and CSS3 to build cross-browser, standards-compliant websites with semantic HTML5.</li>
+            <li>Built web applications that call REST data services, manage state with Redux, and render UI with React, Angular, and Backbone.</li>
+            <li>Developed a designer–developer workflow with column-based Photoshop templates, CSS preprocessors (Sass, LESS), task runners (Grunt, Gulp), and Git.</li>
+            <li>Integrated with back-end code (PHP, MySQL) using jQuery, JSON, and AJAX.</li>
+            <li>Created JavaScript functions and effects, primarily with jQuery and Prototype.</li>
+            <li>Developed custom responsive WordPress themes with Bootstrap, jQuery, Backbone, and custom WP plugins.</li>
+            <li>Used object-oriented JavaScript for data storage and data capture.</li>
+            <li>Wrote code that calls web services/APIs and populates the UI with jQuery, AJAX, and Backbone.</li>
+            <li>Used jQuery and CSS3 for animation and end-user screen customization.</li>
+            <li>Rapidly prototyped new web features and iterated quickly on what works.</li>
+            <li>Used Google Analytics reports to optimize load time on the highest-traffic pages.</li>
+            <li>Worked closely with Product and UX teams to create simple, intuitive interfaces.</li>
+            <li>Led development turning mockups into fully functioning corporate websites and web applications.</li>
+          </ul>
+        </article>
+
+        <article class="rs-job" data-section="job">
+          <h3 class="rs-job__company jg-display" data-title>Rocket55</h3>
+          <p class="rs-job__role jg-heading" data-subtitle>UI / Web Engineer</p>
+          <p class="rs-job__meta" data-meta><span>2014 – 2015</span> <span>Minneapolis, MN</span></p>
+          <ul class="rs-bullets">
+            <li>Designed responsive web pages in Photoshop and Illustrator.</li>
+            <li>Worked with designers, the project manager, and the SEO team to build pixel-perfect responsive websites.</li>
+            <li>Introduced jQuery and CSS3 for animation and end-user screen customization.</li>
+            <li>Used AJAX and JSON with jQuery to fetch and post data to the back end.</li>
+            <li>Built table-less screens that meet W3C standards.</li>
+            <li>Developed multi-page PHP and MySQL applications.</li>
+            <li>Designed dynamic, browser-compatible pages with HTML5, CSS3, and JavaScript.</li>
+            <li>Developed CSS styles to keep screens uniform across websites.</li>
+            <li>Implemented client-side validation and custom PHP validation controls.</li>
+            <li>Wrote JavaScript to manipulate the DOM and CSS dynamically.</li>
+            <li>Developed a custom WordPress plugin with HTML5, CSS3, PHP, and jQuery.</li>
+          </ul>
+        </article>
+
+        <article class="rs-job" data-section="job">
+          <h3 class="rs-job__company jg-display" data-title>The Alt Bike and Board</h3>
+          <p class="rs-job__role jg-heading" data-subtitle>Web Engineer &amp; Graphic/Web Designer</p>
+          <p class="rs-job__meta" data-meta><span>2012 – 2013</span></p>
+          <ul class="rs-bullets">
+            <li>Designed and developed the company website.</li>
+            <li>Transformed design mockups into W3C standards-compliant pages with HTML, XHTML, and CSS.</li>
+            <li>Worked with the business owners to understand their business model and goals and define strategy, content, and features.</li>
+            <li>Designed print material for t-shirts, tote bags, and posters.</li>
+            <li>Created flyers, logos, and marketing material.</li>
+            <li>Participated in daily and status meetings with clear reporting to the project manager and developers.</li>
+            <li>Used JavaScript libraries to build slider and page-turning animations on calendar widgets.</li>
+            <li>Wrote code that calls web services/APIs and populates the UI with jQuery and AJAX.</li>
+          </ul>
+        </article>
+
+        <article class="rs-job" data-section="job">
+          <h3 class="rs-job__company jg-display" data-title>Shop Jimmy</h3>
+          <p class="rs-job__role jg-heading" data-subtitle>Web Engineer</p>
+          <p class="rs-job__meta" data-meta><span>Jan 2009 – Mar 2010</span> <span>Minneapolis, MN</span></p>
+          <ul class="rs-bullets">
+            <li>Designed and developed the company e-commerce website.</li>
+            <li>Developed Magento page templates with HTML, CSS, and PHP, using table-less designs that meet W3C standards.</li>
+            <li>Worked directly with the business owner to understand their business model and goals and define strategy, content, and features.</li>
+            <li>Designed print material for t-shirts, tote bags, and posters.</li>
+            <li>Transformed design mockups into W3C standards-compliant pages with HTML, XHTML, and CSS.</li>
+            <li>Designed flyers, logos, and marketing material.</li>
+            <li>Participated in daily and status meetings with clear reporting to the project manager and developers.</li>
+            <li>Built a web-based ActionScript (Flex, AIR) application that diagrams each television's parts placement, model number, and online resources.</li>
+            <li>Built a real-time in-store and online inventory tracking application with ActionScript (Flex, AIR, LiveCycle).</li>
+            <li>Wrote code that calls web services/APIs and populates the UI with jQuery and AJAX.</li>
+          </ul>
+        </article>
+      </section>
+    </article>
+  </main>
+
+  <footer class="rs-footer">
+    <p class="jg-display jg-display--2am rs-footer__title">Let's build<br />something</p>
+    <a class="jg-btn jg-btn--cta" href="mailto:joshuagiowaya@gmail.com">Get in touch</a>
+    <p class="rs-footer__credit">Paper crumple effect adapted from <a href="https://github.com/item-develop/paper-crumple-demo">paper-crumple-demo</a> by ITEM Inc. (MIT).</p>
+  </footer>
+
+  <script type="module" src="src/stage.js"></script>
+</body>
+</html>

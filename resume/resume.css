@@ -1,0 +1,336 @@
+/* Resume page — layout on top of the JGDzine brand kit (../ds-bundle/styles.css). */
+
+:root {
+  --rs-gutter: clamp(1rem, 4vw, 3rem);
+  --rs-measure: 72ch;
+}
+
+body {
+  background: var(--jg-bg);
+}
+
+a {
+  color: inherit;
+  text-decoration-color: var(--jg-cyan);
+  text-underline-offset: 0.2em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--jg-cyan);
+  outline-offset: 3px;
+}
+
+.rs-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- top band ---------- */
+.rs-top {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 2.5rem var(--rs-gutter) 1.5rem;
+  background: var(--jg-bg-dark);
+  color: var(--jg-text-on-dark);
+}
+.rs-top__logo {
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: none;
+}
+.rs-top__title {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  font-weight: 400;
+}
+.rs-top__name {
+  font-size: var(--jg-text-sm);
+  color: var(--jg-cyan);
+}
+.rs-top__title .jg-display {
+  font-size: var(--jg-text-hero);
+}
+
+/* ---------- paper stage ---------- */
+.rs-stage {
+  background: var(--jg-bg-dark);
+  color: var(--jg-text-on-dark);
+  padding-bottom: 3.5rem;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 calc(100% - 2.5rem));
+}
+.rs-stage[hidden] {
+  display: none;
+}
+.rs-stage__viewport {
+  position: relative;
+  height: clamp(560px, 92svh, 1080px);
+}
+.rs-stage__viewport:focus-visible {
+  outline-offset: -4px;
+}
+.rs-stage__canvas,
+.rs-stage__canvas canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.rs-stage__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--jg-gray-300);
+  letter-spacing: 0.2em;
+}
+.rs-stage__loading[hidden] {
+  display: none;
+}
+
+.rs-stage__bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.25rem var(--rs-gutter) 0;
+}
+.rs-nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.rs-nav:disabled:hover {
+  background: var(--jg-ink);
+}
+.rs-nav.jg-btn--cta:disabled:hover {
+  background: var(--jg-orange);
+}
+.rs-stage__counter {
+  margin: 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: var(--jg-text-lg);
+}
+.rs-stage__label {
+  font-size: var(--jg-text-xs);
+  color: var(--jg-gray-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rs-stage__toc {
+  max-width: 60rem;
+  margin: 1.25rem auto 0;
+  padding: 0 var(--rs-gutter);
+}
+.rs-stage__toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.rs-chip {
+  font-size: var(--jg-text-xs);
+  color: var(--jg-gray-300);
+  background: transparent;
+  border: 1px solid var(--jg-charcoal);
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+}
+.rs-chip:hover {
+  color: var(--jg-white);
+  border-color: var(--jg-gray-600);
+}
+.rs-chip.is-active {
+  color: var(--jg-ink);
+  background: var(--jg-cyan);
+  border-color: var(--jg-cyan);
+}
+
+.rs-stage__hint {
+  max-width: 60rem;
+  margin: 1.25rem auto 0;
+  padding: 0 var(--rs-gutter);
+  text-align: center;
+  font-size: var(--jg-text-sm);
+  color: var(--jg-gray-300);
+}
+.rs-link {
+  font: inherit;
+  color: var(--jg-cyan);
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-left: 0.35rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .rs-stage__bar {
+    gap: 0.5rem;
+  }
+  .rs-nav {
+    padding: 0.7rem 0.9rem;
+  }
+}
+
+/* ---------- resume source (plain document) ---------- */
+.rs-source {
+  max-width: var(--rs-measure);
+  margin: 0 auto;
+  padding: 3.5rem var(--rs-gutter) 4rem;
+}
+/* When the paper stage is running the document stays in the accessibility tree but off screen,
+   until the visitor asks for the text version. */
+.has-stage .rs-source:not(.is-open) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.rs-profile__name {
+  font-size: var(--jg-text-hero);
+  margin: 0;
+}
+.rs-profile__role {
+  margin: 0.75rem 0 0;
+  font-size: var(--jg-text-lg);
+}
+.rs-profile__contact {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  color: var(--jg-text-muted);
+}
+
+.rs-block {
+  margin-top: 3rem;
+}
+.rs-block__title {
+  font-size: var(--jg-text-xl);
+  margin: 0 0 1.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--jg-ink);
+}
+
+.rs-bullets {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rs-bullets li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 0.4rem;
+}
+.rs-bullets li::before {
+  content: "";
+  position: absolute;
+  left: 0.2rem;
+  top: 0.62em;
+  width: 0.45rem;
+  height: 0.45rem;
+  border: 2px solid var(--jg-cyan);
+  transform: rotate(45deg);
+}
+
+.rs-skills {
+  margin: 0;
+  display: grid;
+  gap: 1rem;
+}
+.rs-skills dt {
+  font-family: var(--jg-font-heading);
+  text-transform: uppercase;
+  letter-spacing: var(--jg-heading-tracking);
+}
+.rs-skills dd {
+  margin: 0.15rem 0 0;
+  color: var(--jg-text-muted);
+}
+
+.rs-job {
+  margin-top: 2.5rem;
+}
+.rs-job__company {
+  font-size: var(--jg-text-2xl);
+  margin: 0;
+}
+.rs-job__role {
+  margin: 0.4rem 0 0;
+}
+.rs-job__meta {
+  margin: 0.2rem 0 1rem;
+  color: var(--jg-text-muted);
+  font-size: var(--jg-text-sm);
+}
+.rs-job__meta span + span::before {
+  content: "·";
+  margin: 0 0.5rem;
+}
+
+/* ---------- footer ---------- */
+.rs-footer {
+  background: var(--jg-bg-dark);
+  color: var(--jg-text-on-dark);
+  padding: 5rem var(--rs-gutter) 2.5rem;
+  clip-path: polygon(0 2.5rem, 100% 0, 100% 100%, 0 100%);
+}
+.rs-footer__title {
+  font-size: var(--jg-text-hero);
+  margin: 0 0 1.5rem;
+}
+.rs-footer__credit {
+  margin: 3rem 0 0;
+  font-size: var(--jg-text-xs);
+  color: var(--jg-gray-300);
+}
+
+/* ---------- print: always the plain document ---------- */
+@media print {
+  .rs-stage,
+  .rs-footer {
+    display: none !important;
+  }
+  .rs-top {
+    background: none;
+    color: var(--jg-ink);
+  }
+  .rs-top__logo {
+    display: none;
+  }
+  .has-stage .rs-source:not(.is-open) {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}

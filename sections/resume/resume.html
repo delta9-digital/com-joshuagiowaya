@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Résumé section — JGDzine preview</title>
+<link rel="stylesheet" href="../../ds-bundle/styles.css">
+<link rel="stylesheet" href="resume.css">
+<style>
+  /* preview-only: a slice of "page" above so the diagonal edge reads in context */
+  .preview-nav { background: var(--jg-ink); color: var(--jg-gray-300); padding: 1rem clamp(1.25rem, 4vw, 3rem); font-family: var(--jg-font-heading); text-transform: uppercase; letter-spacing: 0.12em; font-size: var(--jg-text-xs); display: flex; justify-content: space-between; }
+  .preview-nav a { color: inherit; text-decoration: none; }
+  .preview-nav a[aria-current] { color: var(--jg-accent); }
+</style>
+</head>
+<body>
+
+<nav class="preview-nav" aria-label="Preview navigation">
+  <a href="#">JGDzine</a>
+  <span><a href="#">Work</a> &nbsp;·&nbsp; <a href="#resume" aria-current="page">Résumé</a> &nbsp;·&nbsp; <a href="#">Contact</a></span>
+</nav>
+
+<section class="jg-resume" id="resume" aria-labelledby="resume-title">
+
+  <div class="jg-resume__head">
+    <div class="jg-resume__inner">
+      <div>
+        <p class="jg-resume__eyebrow">Résumé</p>
+        <h2 class="jg-display jg-resume__title" id="resume-title">Track<br>Rec<em>o</em>rd</h2>
+        <p class="jg-resume__intro">Technical engineering lead, developer, and designer with 15+ years building interactive web products from Minneapolis. I lead teams, ship the work, and design the system behind it.</p>
+        <div class="jg-resume__actions">
+          <a class="jg-btn jg-btn--cta" href="/wp-content/uploads/joshua-giowaya-resume.pdf" download>Download PDF</a>
+          <a class="jg-btn" href="#contact">Get in touch</a>
+        </div>
+      </div>
+      <div class="jg-resume__stats" aria-label="Highlights">
+        <span class="jg-diamond"><p><strong>15+</strong>Years<br>building</p></span>
+        <span class="jg-diamond jg-diamond--solid"><p><strong>MPLS</strong>Based in<br>Minnesota</p></span>
+        <span class="jg-diamond"><p><strong>2009</strong>Shipping<br>since</p></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="jg-resume__body">
+    <div class="jg-resume__inner">
+
+      <div>
+        <h3 class="jg-heading jg-resume__label">Experience</h3>
+        <ol class="jg-resume__timeline">
+
+          <li class="jg-resume__entry jg-resume__entry--current">
+            <p class="jg-resume__dates">Nov 2022 — Present</p>
+            <h4 class="jg-heading jg-resume__role">Technical Engineering Lead</h4>
+            <p class="jg-resume__org">Yardstik <span>Minneapolis, MN</span></p>
+            <ul class="jg-resume__bullets">
+              <li>Shape technical roadmaps with executives and business partners, and lead a distributed engineering team on architecture and direction.</li>
+              <li>Ship products from web apps to in-store experiences with React, Vue, Svelte, TypeScript, Laravel, and WordPress.</li>
+              <li>Partner with product design on reusable design systems and pattern libraries; own the Git workflow, testing, and release process.</li>
+            </ul>
+          </li>
+
+          <li class="jg-resume__entry">
+            <p class="jg-resume__dates">Apr 2021 — Nov 2022</p>
+            <h4 class="jg-heading jg-resume__role">Technical Engineering Lead</h4>
+            <p class="jg-resume__org">Self Esteem Brands <span>Woodbury, MN</span></p>
+            <ul class="jg-resume__bullets">
+              <li>Led engineers across multiple locations and mentored them to raise core competency and team velocity.</li>
+              <li>Established Git workflow, testing, and CI/CD release process; set coding standards enforced through linting, pre-commit checks, and reviews.</li>
+            </ul>
+          </li>
+
+          <li class="jg-resume__entry">
+            <p class="jg-resume__dates">Dec 2016 — 2021</p>
+            <h4 class="jg-heading jg-resume__role">Sr. Software Engineer</h4>
+            <p class="jg-resume__org">Code42 <span>Minneapolis, MN</span></p>
+            <ul class="jg-resume__bullets">
+              <li>Built web applications on REST services with Redux state and React, Angular, and Backbone UIs; custom responsive WordPress themes and plugins.</li>
+              <li>Represented the company at tech conferences as an evangelist for its web application approach.</li>
+            </ul>
+          </li>
+
+          <li class="jg-resume__entry">
+            <p class="jg-resume__dates">Sep 2014 — Dec 2020</p>
+            <h4 class="jg-heading jg-resume__role">Lead Web &amp; Software Engineer</h4>
+            <p class="jg-resume__org">Linnihan Foy <span>Minneapolis, MN</span></p>
+            <ul class="jg-resume__bullets">
+              <li>Led development turning mockups into fully functioning corporate websites and web applications.</li>
+              <li>Defined the designer-to-developer workflow (Sass, Grunt/Gulp, Git) and used analytics to cut load time on the highest-traffic pages.</li>
+            </ul>
+          </li>
+
+          <li class="jg-resume__entry">
+            <p class="jg-resume__dates">2014 — 2015</p>
+            <h4 class="jg-heading jg-resume__role">UI / Web Engineer</h4>
+            <p class="jg-resume__org">Rocket55 <span>Minneapolis, MN</span></p>
+            <ul class="jg-resume__bullets">
+              <li>Built pixel-perfect responsive sites with designers and the SEO team; designed pages in Photoshop and Illustrator.</li>
+              <li>Developed multi-page PHP/MySQL applications and a custom WordPress plugin.</li>
+            </ul>
+          </li>
+
+          <li class="jg-resume__entry">
+            <p class="jg-resume__dates">2012 — 2013</p>
+            <h4 class="jg-heading jg-resume__role">Web Engineer &amp; Graphic Designer</h4>
+            <p class="jg-resume__org">The Alt Bike and Board</p>
+            <ul class="jg-resume__bullets">
+              <li>Designed and developed the company website, plus print for t-shirts, totes, posters, logos, and marketing material.</li>
+            </ul>
+          </li>
+
+          <li class="jg-resume__entry">
+            <p class="jg-resume__dates">Jan 2009 — Mar 2010</p>
+            <h4 class="jg-heading jg-resume__role">Web Engineer</h4>
+            <p class="jg-resume__org">Shop Jimmy <span>Minneapolis, MN</span></p>
+            <ul class="jg-resume__bullets">
+              <li>Designed and built the Magento e-commerce site and a real-time in-store and online inventory app (ActionScript, Flex, AIR).</li>
+            </ul>
+          </li>
+
+        </ol>
+      </div>
+
+      <aside class="jg-resume__aside">
+
+        <div class="jg-resume__block">
+          <h3 class="jg-heading jg-resume__label">Skills</h3>
+          <div class="jg-resume__group"><p class="jg-resume__group-name">Build</p><ul class="jg-resume__tags"><li>JavaScript / TypeScript</li><li>React</li><li>Vue</li><li>Angular</li><li>Svelte</li><li>Node</li><li>PHP</li><li>Python</li></ul></div>
+          <div class="jg-resume__group"><p class="jg-resume__group-name">Platforms</p><ul class="jg-resume__tags"><li>WordPress</li><li>Laravel</li><li>Magento</li><li>REST / GraphQL</li><li>Docker</li><li>AWS</li></ul></div>
+          <div class="jg-resume__group"><p class="jg-resume__group-name">Data</p><ul class="jg-resume__tags"><li>MySQL</li><li>Postgres</li><li>MongoDB</li><li>Elasticsearch</li></ul></div>
+          <div class="jg-resume__group"><p class="jg-resume__group-name">Design</p><ul class="jg-resume__tags"><li>Figma</li><li>Sketch</li><li>Adobe CS</li><li>InVision</li></ul></div>
+          <div class="jg-resume__group"><p class="jg-resume__group-name">Practice</p><ul class="jg-resume__tags"><li>TDD / Jest</li><li>CI / CD</li><li>Agile / Jira</li><li>Accessibility</li></ul></div>
+        </div>
+
+        <div class="jg-resume__block">
+          <h3 class="jg-heading jg-resume__label">Focus</h3>
+          <ul class="jg-resume__edu">
+            <li><strong>Team leadership</strong><span>Mentoring distributed engineers, roadmaps with executives.</span></li>
+            <li><strong>Design systems</strong><span>Reusable pattern libraries built with product design.</span></li>
+            <li><strong>Release engineering</strong><span>Git workflow, testing, linting, CI/CD, on-time releases.</span></li>
+            <li><strong>Compliance</strong><span>Accessibility, data retention, and security standards.</span></li>
+          </ul>
+        </div>
+
+        <div class="jg-resume__block">
+          <h3 class="jg-heading jg-resume__label">Reach me</h3>
+          <ul class="jg-resume__contact">
+            <li><a href="mailto:joshuagiowaya@gmail.com">joshuagiowaya@gmail.com</a></li>
+            <li><a href="tel:+16126699349">612.669.9349</a></li>
+            <li><a href="https://joshuagiowaya.com">joshuagiowaya.com</a></li>
+            <li>Minneapolis, MN</li>
+          </ul>
+        </div>
+
+      </aside>
+
+    </div>
+  </div>
+</section>
+
+<script>
+  // Progressive: stagger the timeline in once the section scrolls into view.
+  (function () {
+    var s = document.querySelector('.jg-resume');
+    if (!s || !('IntersectionObserver' in window)) return;
+    new IntersectionObserver(function (e, o) {
+      if (e[0].isIntersecting) { s.classList.add('is-animated'); o.disconnect(); }
+    }, { threshold: 0.15 }).observe(s);
+  })();
+</script>
+</body>
+</html>

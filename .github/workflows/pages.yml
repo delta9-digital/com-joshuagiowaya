@@ -1,0 +1,67 @@
+# Publishes the sections/ previews to GitHub Pages.
+# The site keeps the repo layout so relative links (../../ds-bundle/styles.css) still resolve:
+#   /                          → redirects to the résumé section preview
+#   /sections/resume/resume.html
+#   /ds-bundle/…               (brand fonts + tokens)
+name: Deploy sections to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sections/**"
+      - "ds-bundle/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp -R sections ds-bundle _site/
+          # Only the browser previews ship; WordPress pattern sources stay in the repo.
+          find _site/sections -name '*.php' -delete
+          cat > _site/index.html <<'HTML'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <title>Résumé — Joshua Giowaya</title>
+            <meta http-equiv="refresh" content="0; url=sections/resume/resume.html">
+            <link rel="canonical" href="sections/resume/resume.html">
+          </head>
+          <body>
+            <p><a href="sections/resume/resume.html">Résumé section preview</a></p>
+          </body>
+          </html>
+          HTML
+          touch _site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
