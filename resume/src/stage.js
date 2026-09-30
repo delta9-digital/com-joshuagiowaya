@@ -112,7 +112,8 @@ const SHOT_ARC = 0.6; // apex height above the higher of release point and rim (
 // centred, SHOT_SPOT_SCREEN_Y of the way down — and projected into the scene at carry height, so
 // it sits clearly in front of the hoop on any screen shape.
 const SHOT_SPOT_SCREEN_Y = 0.74;
-const SHOT_SPOT_LIFT = 0.15; // above the normal carry height
+const SHOT_SPOT_LIFT = 0.5; // above the normal carry height
+const SHOT_RIM_CLEARANCE = 0.08; // the ball must pass at least this far above the front of the rim
 const BALL_DAMPING = 0.15;
 const SHEET_DIM = 0.12;
 const HOOP_Y = FLOOR_VISUAL_Y + 1.1; // fallback rim height; normally fitted under the HUD
@@ -148,6 +149,7 @@ let hoverPaper = null; // ball under the pointer (or tapped once on touch)
 let tipEl = null;
 const HOVER_GLOW = new THREE.Color(token("--jg-cyan", "#00bdff"));
 let hoop = null;
+const rimTouches = [];
 let hoopShown = false; // requested state; the mesh eases toward it in updateHoop()
 let hoopArmed = false; // colliders are live only once it has settled into place
 const score = { made: 0, shots: 0 };
@@ -383,6 +385,13 @@ function buildHoop() {
     logoUrl: new URL("../../ds-bundle/components/Brand/Logo/jg-wht.svg", import.meta.url).href,
   });
   stageBounds.maxZ = HOOP_MAX_Z;
+  // Record rim touches (tests use this to catch shots clipping the rim's underside on the way up)
+  for (const rb of hoop.rimBodies) {
+    rb.addEventListener("collide", (e) => {
+      const i = papers.findIndex((p) => p && p.body === e.body);
+      if (i >= 0 && rimTouches.length < 50) rimTouches.push({ ball: i, rising: e.body.velocity.y > 0.2 });
+    });
+  }
   hoop.group.visible = false;
   placeHoop();
   hoop.group.position.y = hoopAwayY();
@@ -1434,9 +1443,23 @@ function aimedShot(paper) {
   // Arc by strength: the ideal flick is a clean lob; a soft one is lower and falls short; a hard
   // one is a flat line drive that clangs off the back rim/board and away (a high lob would bank in)
   const arc = power <= 1 ? 0.55 + 0.45 * power : Math.max(0.3, 1 - 0.7 * (power - 1));
-  const apex = Math.max(b.y, rim.y) + SHOT_ARC * arc;
-  const vy = Math.sqrt(2 * g * (apex - b.y));
-  const t = vy / g + Math.sqrt((2 * (apex - rim.y)) / g);
+  let apex = Math.max(b.y, rim.y) + SHOT_ARC * arc;
+  // Clear the front of the rim: raise the arc until the ball passes over the rim's near edge
+  // (where it would otherwise clip the underside on the way up), for any rim height or distance.
+  const frontX = dist - hoop.rimRadius; // floor distance from launch to the rim's near edge
+  const needY = rim.y + collisionRadius + SHOT_RIM_CLEARANCE;
+  const flight = (ap) => {
+    const vUp = Math.sqrt(2 * g * (ap - b.y));
+    const T = vUp / g + Math.sqrt((2 * (ap - rim.y)) / g);
+    return { vUp, T };
+  };
+  for (let k = 0; k < 30 && frontX > 0 && frontX < reach; k++) {
+    const { vUp, T } = flight(apex);
+    const tf = (frontX / reach) * T; // time the ball is above the rim's near edge
+    if (b.y + vUp * tf - 0.5 * g * tf * tf >= needY) break;
+    apex += 0.05;
+  }
+  const { vUp: vy, T: t } = flight(apex);
   lastAim = { from: b.toArray().map((n) => +n.toFixed(2)), target: [+tx.toFixed(2), +rim.y.toFixed(2), +tz.toFixed(2)], raw: +(Math.hypot(f.x, f.y) / (screenDist * SHOT_IDEAL_PX_PER_SCREEN_DIST)).toFixed(2), power: +power.toFixed(2), errDeg: +THREE.MathUtils.radToDeg(err).toFixed(1), t: +t.toFixed(2) };
   return { x: (tx - b.x) / t, y: vy, z: (tz - b.z) / t };
 }
@@ -1644,6 +1667,7 @@ section.__stage = () => ({
   papers: papers.map((p) => p && p.state),
   lastFlick,
   lastAim,
+  rimTouches: () => rimTouches.splice(0),
   // pause rendering (tests): lets scripted pointer events arrive at real-device timing
   pause: (on) => setRunning(!on && visible && !document.hidden),
   spot: hoop ? shotSpot(new THREE.Vector3()).toArray() : null,

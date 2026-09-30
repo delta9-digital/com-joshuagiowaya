@@ -184,5 +184,5 @@ export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, 
   arm(false);
 
   // topOffset: backboard top edge above the rim; faceZ: z of the backboard's front face
-  return { group, rimRadius: R, center, topOffset: boardY + bh / 2, faceZ: boardFaceZ, place, setY, arm };
+  return { group, rimRadius: R, center, topOffset: boardY + bh / 2, faceZ: boardFaceZ, rimBodies, place, setY, arm };
 }
