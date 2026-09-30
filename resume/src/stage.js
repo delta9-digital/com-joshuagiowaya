@@ -99,13 +99,13 @@ const SHOT_IDEAL_PX_PER_SCREEN_DIST = 2.5; // ideal flick speed = on-screen dist
 // Strength matters: the throw's reach scales with flick speed (soft falls short, hard sails long
 // or off the backboard), and its arc rises with it. Only a sweet spot of ±SHOT_POWER_SWEET around
 // the ideal is pulled toward a make.
-const SHOT_POWER_SWEET = 0.2;
-const SHOT_POWER_SWEET_KEEP = 0.25; // share of the error kept inside the sweet spot
-const SHOT_POWER_LONG_GAIN = 2.2; // past the sweet spot, extra strength sends it this much farther
+const SHOT_POWER_SWEET = 0.4;
+const SHOT_POWER_SWEET_KEEP = 0.12; // share of the error kept inside the sweet spot
+const SHOT_POWER_LONG_GAIN = 1.8; // past the sweet spot, extra strength sends it this much farther
 const SHOT_POWER_MIN = 0.3;
 const SHOT_POWER_MAX = 2.4;
-const SHOT_ANGLE_SNAP = THREE.MathUtils.degToRad(18); // angle errors below this are forgiven …
-const SHOT_ANGLE_SNAP_KEEP = 0.2; // … keeping this share
+const SHOT_ANGLE_SNAP = THREE.MathUtils.degToRad(30); // angle errors below this are forgiven …
+const SHOT_ANGLE_SNAP_KEEP = 0.1; // … keeping this share
 const SHOT_ARC = 0.6; // apex height above the higher of release point and rim (world units)
 // While the hoop is down a picked-up ball glides to a "free-throw" spot, so every shot starts from
 // the same place and the same flick always does the same thing. The spot is picked on screen —
