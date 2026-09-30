@@ -1,8 +1,13 @@
 // ==================================================
 // Resume paper stage
-// Every resume sheet is a crumpled paper ball. Back/Next unfolds the next sheet toward the
-// camera and tosses the current one back onto the floor. Scene, VAT playback, and physics
-// are adapted from item-develop/paper-crumple-demo (MIT).
+// Two modes, chosen by data-mode on .rs-stage:
+//   "pile" (default): every sheet starts as a crumpled ball on the floor. Back/Next unfolds the
+//          next sheet toward the camera and tosses the current one back onto the pile.
+//   "read": the floor starts empty and the first sheet is already open. Next crumples the sheet
+//          you finished onto the floor and the next one arrives open; Back unfolds the last
+//          crumpled sheet again and the unread one vanishes. Only read sheets are ever on the floor.
+// data-sheet-headers="first" draws the dark header band only on a section's first sheet.
+// Scene, VAT playback, and physics are adapted from item-develop/paper-crumple-demo (MIT).
 // ==================================================
 import * as THREE from "three";
 import * as CANNON from "cannon-es";
@@ -25,6 +30,9 @@ const statusEl = section.querySelector("[data-status]");
 const textToggle = section.querySelector("[data-text-toggle]");
 const resumeEl = document.getElementById("resume");
 
+const MODE = section.dataset.mode === "read" ? "read" : "pile";
+const CONTINUATION_BAND = section.dataset.sheetHeaders !== "first";
+
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const rootStyle = getComputedStyle(document.documentElement);
 const token = (name, fallback) => rootStyle.getPropertyValue(name).trim() || fallback;
@@ -39,6 +47,9 @@ const OPEN_WIDTH_RATIO = 0.94;
 const CLOSED_SCALE = 0.82;
 const OPEN_DURATION = 1.15;
 const DISCARD_DURATION = 1.25;
+const ARRIVE_DURATION = 0.7; // read mode: a fresh sheet fading into the open pose
+const VANISH_DURATION = 0.45; // read mode: an unread sheet / skipped ball fading away
+const ARRIVE_LIFT = 0.45; // how far above the open pose a fresh sheet starts
 const SPEED = reduceMotion ? 4 : 1.5;
 const OPEN_FRAME = 1.5; // VAT frame shown when open — near 0 is flat, a little higher keeps some crinkle
 const ROLL_LINEAR_RESISTANCE = 2.6;
@@ -112,7 +123,7 @@ function fail(err) {
 async function start() {
   await waitForFonts();
   const compact = container.clientWidth < 640;
-  pages = paginate(readResume(resumeEl), { compact });
+  pages = paginate(readResume(resumeEl), { compact, continuationBand: CONTINUATION_BAND });
   buildControls();
   buildScene();
 
@@ -121,6 +132,11 @@ async function start() {
   measureCrumple();
 
   loadingEl.hidden = true;
+  if (MODE === "read") {
+    // Nothing on the floor yet — the first sheet simply arrives open.
+    setTimeout(() => goTo(0), reduceMotion ? 50 : 300);
+    return;
+  }
   const dropStagger = reduceMotion ? 0 : 70;
   pages.forEach((page, i) => {
     setTimeout(() => spawnPaper(page, !reduceMotion), i * dropStagger);
@@ -343,6 +359,7 @@ function spawnPosition() {
     pos.x = randomRange(stageBounds.minX + margin, stageBounds.maxX - margin);
     pos.z = randomRange(stageBounds.minZ + margin, stageBounds.maxZ - margin);
     const clear = papers.every((p) => {
+      if (!p) return true; // read mode: unread pages have no paper yet
       const dx = p.body.position.x - pos.x;
       const dz = p.body.position.z - pos.z;
       return dx * dx + dz * dz > (collisionRadius * 2.2) ** 2;
@@ -352,7 +369,7 @@ function spawnPosition() {
   return pos;
 }
 
-function spawnPaper(page, dropIn) {
+function spawnPaper(page, dropIn, dropHeight = randomRange(3.5, 6.5)) {
   const maxFrame = animData.frameCount - 1;
   const lowTex = makeSheetTexture(page, LOW_TEX_W);
   const material = new THREE.MeshStandardMaterial({
@@ -390,11 +407,67 @@ function spawnPaper(page, dropIn) {
   if (dropIn) {
     paper.state = "rolling";
     paper.throw = { settleTimer: 0 };
-    paper.body.position.y += randomRange(3.5, 6.5);
+    paper.body.position.y += dropHeight;
     paper.body.angularVelocity.set(randomRange(-1.5, 1.5), randomRange(-0.5, 0.5), randomRange(-1.5, 1.5));
     syncMeshToBody(paper);
   }
   return paper;
+}
+
+function removePaper(paper) {
+  if (pointerState && pointerState.paper === paper) pointerState = null;
+  if (activePaper === paper) activePaper = null;
+  scene.remove(paper.mesh);
+  physicsWorld.removeBody(paper.body);
+  paper.mesh.geometry.dispose();
+  paper.lowTex.dispose();
+  if (paper.hiTex) paper.hiTex.dispose();
+  paper.material.dispose();
+  papers[paper.page.index] = undefined;
+}
+
+const _camUp = new THREE.Vector3();
+function cameraUp() {
+  return _camUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+}
+
+// Read mode: a sheet that arrives already open, fading in from just above the open pose.
+function spawnOpen(page) {
+  const paper = spawnPaper(page, false);
+  setPaperBodyDynamic(paper, false);
+  setHiRes(paper, true);
+  const pose = computeOpenPose();
+  paper.frameIdx = OPEN_FRAME;
+  updatePaperFrame(paper, OPEN_FRAME);
+  paper.mesh.quaternion.copy(pose.quaternion);
+  paper.target = { ...pose, frameIdx: OPEN_FRAME };
+  paper.start = {
+    position: pose.position.clone().addScaledVector(cameraUp(), ARRIVE_LIFT),
+    scale: pose.scale * 0.94,
+  };
+  paper.mesh.position.copy(paper.start.position);
+  paper.mesh.scale.setScalar(paper.start.scale);
+  paper.material.transparent = true;
+  paper.material.opacity = 0;
+  paper.state = "arriving";
+  paper.time = 0;
+  return paper;
+}
+
+// Read mode: fade a sheet out and remove it. An open sheet floats up as it goes; a ball just fades.
+function startVanish(paper, lift) {
+  if (paper.state === "vanishing") return;
+  setPaperBodyDynamic(paper, false);
+  paper.state = "vanishing";
+  paper.time = 0;
+  paper.material.transparent = true;
+  paper.vanishFrom = paper.material.opacity;
+  paper.start = lift
+    ? {
+        position: paper.mesh.position.clone(),
+        exit: paper.mesh.position.clone().addScaledVector(cameraUp(), ARRIVE_LIFT),
+      }
+    : null;
 }
 
 // ==================================================
@@ -535,7 +608,7 @@ function computeOpenPose() {
 function updateOpenPose() {
   if (!activePaper) return;
   const pose = computeOpenPose();
-  if (activePaper.state === "opening") {
+  if (activePaper.state === "opening" || activePaper.state === "arriving") {
     activePaper.target.position.copy(pose.position);
     activePaper.target.quaternion.copy(pose.quaternion);
     activePaper.target.scale = pose.scale;
@@ -570,6 +643,8 @@ function startDiscard(paper, direction) {
     0,
     randomRange(-1.3, -0.45),
   ).normalize();
+  paper.material.opacity = 1;
+  paper.material.transparent = false;
   paper.state = "discarding";
   paper.time = 0;
   paper.start = captureTransform(paper);
@@ -586,14 +661,45 @@ function startDiscard(paper, direction) {
 function goTo(index) {
   if (!animData || !pages.length) return;
   index = Math.max(0, Math.min(index, pages.length - 1));
-  const target = papers[index];
-  if (!target || (target === activePaper && current === index)) return;
+  if (index === current) return;
+  if (MODE === "read") goToRead(index);
+  else goToPile(index);
+  current = index;
+  updateControls(true);
+}
 
+// Pile mode: every sheet already exists as a ball; swap which one is open.
+function goToPile(index) {
+  const target = papers[index];
+  if (!target) return;
   if (activePaper) startDiscard(activePaper, index > current ? -1 : 1);
   startOpen(target);
   activePaper = target;
-  current = index;
-  updateControls(true);
+}
+
+// Read mode: the floor holds exactly the sheets before `current`, as balls.
+function goToRead(index) {
+  const leaving = activePaper;
+  if (index > current) {
+    if (leaving) startDiscard(leaving, -1);
+    // Skipped sheets land on the floor as read, raining in one after another.
+    for (let i = current + 1; i < index; i++) {
+      if (!papers[i]) spawnPaper(pages[i], true, 3 + (i - current) * 0.5);
+    }
+    activePaper = spawnOpen(pages[index]);
+    return;
+  }
+  if (leaving) startVanish(leaving, true);
+  for (let i = index + 1; i < current; i++) {
+    if (papers[i]) startVanish(papers[i], false);
+  }
+  const target = papers[index];
+  if (target && target.state !== "vanishing") {
+    startOpen(target);
+    activePaper = target;
+  } else {
+    activePaper = spawnOpen(pages[index]);
+  }
 }
 
 const next = () => goTo(current + 1);
@@ -744,7 +850,7 @@ function updateHoverCursor(e) {
 
 function handleClick(e) {
   const p = pickPaper(e);
-  if (!p) return;
+  if (!p || p.state === "vanishing") return;
   if (p === activePaper) next();
   else goTo(p.page.index);
 }
@@ -842,6 +948,35 @@ function updatePaperMotion(paper, dt) {
     return;
   }
 
+  if (paper.state === "arriving") {
+    paper.time += dt * SPEED;
+    const t = clamp01(paper.time / ARRIVE_DURATION);
+    const e = easeOutCubic(t);
+    paper.mesh.position.lerpVectors(paper.start.position, paper.target.position, e);
+    paper.mesh.scale.setScalar(lerp(paper.start.scale, paper.target.scale, e));
+    paper.material.opacity = e;
+    if (t >= 1) {
+      paper.state = "open";
+      paper.material.opacity = 1;
+      paper.material.transparent = false;
+      paper.mesh.position.copy(paper.target.position);
+      paper.mesh.scale.setScalar(paper.target.scale);
+      syncBodyToMesh(paper);
+    }
+    return;
+  }
+
+  if (paper.state === "vanishing") {
+    paper.time += dt * SPEED;
+    const t = clamp01(paper.time / VANISH_DURATION);
+    paper.material.opacity = paper.vanishFrom * (1 - t);
+    if (paper.start) {
+      paper.mesh.position.lerpVectors(paper.start.position, paper.start.exit, easeInCubic(t));
+    }
+    if (t >= 1) removePaper(paper);
+    return;
+  }
+
   if (paper.state === "discarding") {
     paper.time += dt * SPEED;
     const t = clamp01(paper.time / DISCARD_DURATION);
@@ -897,5 +1032,8 @@ function updatePaperMotion(paper, dt) {
     syncMeshToBody(paper);
   }
 }
+
+// Test hook: lets a headless driver read the stage state (which page is open, what's on the floor).
+section.__stage = () => ({ current, papers: papers.map((p) => p && p.state) });
 
 boot();

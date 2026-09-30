@@ -16,6 +16,7 @@ const MIN_TAIL_BLOCKS = 3; // a continuation sheet should never hold fewer items
 // Header band heights (left edge, right edge) — the bottom edge is a diagonal, per the brand.
 const BAND_FIRST = [372, 318];
 const BAND_CONT = [196, 164];
+const BODY_TOP_PLAIN = 150; // continuation sheets without a band start here
 
 const rootStyle = getComputedStyle(document.documentElement);
 const token = (name, fallback) => rootStyle.getPropertyValue(name).trim() || fallback;
@@ -181,8 +182,8 @@ function layoutBlock(ctx, block, t) {
 }
 
 // Where the body starts on a section's first sheet vs. its continuation sheets.
-function bodyTop(section, first) {
-  if (!first) return BAND_CONT[0] + 70;
+function bodyTop(section, first, continuationBand) {
+  if (!first) return continuationBand ? BAND_CONT[0] + 70 : BODY_TOP_PLAIN;
   let y = BAND_FIRST[0] + 40;
   if (section.subtitle) y += 76;
   if (section.metaLines) y += 30 + section.metaLines * 44;
@@ -191,7 +192,7 @@ function bodyTop(section, first) {
 
 // Greedy fill where each sheet may use `ratio` of its own body space; returns block lists per sheet.
 // `startsSection` says whether the first sheet produced is the section's opening sheet.
-function fill(section, blocks, t, ratio, startsSection = true) {
+function fill(section, blocks, t, ratio, startsSection, continuationBand) {
   const sheets = [];
   let sheet = null;
   let y = 0;
@@ -199,7 +200,7 @@ function fill(section, blocks, t, ratio, startsSection = true) {
   const newSheet = () => {
     sheet = [];
     sheets.push(sheet);
-    y = bodyTop(section, startsSection && sheets.length === 1);
+    y = bodyTop(section, startsSection && sheets.length === 1, continuationBand);
     bottom = y + (BODY_BOTTOM - y) * ratio;
   };
   newSheet();
@@ -216,9 +217,10 @@ function fill(section, blocks, t, ratio, startsSection = true) {
 /**
  * Flows every section onto as many sheets as it needs. Blocks never split across sheets, and a
  * section's last sheet is rebalanced with the one before it so it never holds a lone bullet.
- * Returns [{ index, total, section, sectionIndex, first, blocks: [{...block, y}] }].
+ * With `continuationBand: false`, only a section's first sheet carries the dark header band.
+ * Returns [{ index, total, section, sectionIndex, first, band, blocks: [{...block, y}] }].
  */
-export function paginate(sections, { compact = false } = {}) {
+export function paginate(sections, { compact = false, continuationBand = true } = {}) {
   const t = typeScale(compact);
   const ctx = document.createElement("canvas").getContext("2d");
   const pages = [];
@@ -228,23 +230,24 @@ export function paginate(sections, { compact = false } = {}) {
     section.metaLines = wrapItems(ctx, section.meta, CONTENT_W).length;
 
     const blocks = section.blocks.map((b) => layoutBlock(ctx, b, t));
-    let sheets = fill(section, blocks, t, 1);
+    let sheets = fill(section, blocks, t, 1, true, continuationBand);
     // Fill sheets fully, but if the last one would be nearly empty, rebalance the final two:
     // shrink their usable share as far as it goes while still fitting on two sheets.
     if (sheets.length > 1 && sheets[sheets.length - 1].length < MIN_TAIL_BLOCKS) {
       const head = sheets.slice(0, -2);
       const tailBlocks = sheets.slice(-2).flat();
       const startsSection = head.length === 0;
-      let tail = fill(section, tailBlocks, t, 1, startsSection);
+      let tail = fill(section, tailBlocks, t, 1, startsSection, continuationBand);
       for (let ratio = 0.97; ratio > 0.4; ratio -= 0.03) {
-        const tighter = fill(section, tailBlocks, t, ratio, startsSection);
+        const tighter = fill(section, tailBlocks, t, ratio, startsSection, continuationBand);
         if (tighter.length > 2) break;
         tail = tighter;
       }
       sheets = [...head, ...tail];
     }
     sheets.forEach((sheetBlocks, i) => {
-      pages.push({ section, sectionIndex, first: i === 0, blocks: sheetBlocks, type: t });
+      const first = i === 0;
+      pages.push({ section, sectionIndex, first, band: first || continuationBand, blocks: sheetBlocks, type: t });
     });
   });
 
@@ -437,7 +440,7 @@ export function drawPage(ctx, page, scale = 1) {
   }
   ctx.stroke();
 
-  drawBand(ctx, page);
+  if (page.band) drawBand(ctx, page);
   if (page.first) drawIntro(ctx, page);
   drawBlocks(ctx, page);
   drawFooter(ctx, page);
