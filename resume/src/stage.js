@@ -1535,12 +1535,18 @@ function tick() {
   const now = performance.now() / 1000;
   const dt = now - prevTime;
   prevTime = now;
+  frame(dt);
+}
 
+function frame(dt) {
   if (animData) {
     physicsWorld.step(PHYSICS_STEP, Math.min(dt, 0.05), 3);
     applyPhysicsBounds(dt);
     for (const p of papers) if (p) updatePaperMotion(p, dt);
     updateHoop(dt);
+    if (hoop && hoop.group.visible) {
+      hoop.updateNet(dt, papers.filter((p) => p && p.state === "rolling").map((p) => p.body), collisionRadius);
+    }
     checkBaskets();
     updateSheetDim(dt);
     updateTip();
@@ -1670,6 +1676,11 @@ section.__stage = () => ({
   rimTouches: () => rimTouches.splice(0),
   // pause rendering (tests): lets scripted pointer events arrive at real-device timing
   pause: (on) => setRunning(!on && visible && !document.hidden),
+  // advance n frames of exactly 1/60 s with the loop paused, then render (tests: frame-by-frame)
+  frames: (n) => {
+    setRunning(false);
+    for (let k = 0; k < n; k++) frame(1 / 60);
+  },
   spot: hoop ? shotSpot(new THREE.Vector3()).toArray() : null,
   pointer: pointerState ? { grabbing: pointerState.grabbing, paper: pointerState.paper && pointerState.paper.page.index } : null,
   score: { ...score },

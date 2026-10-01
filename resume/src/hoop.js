@@ -49,6 +49,139 @@ async function loadSvgTexture(url, size = 512) {
   }
 }
 
+// ---------- net ----------
+const NET_RINGS = 7; // knot rings from the rim (ring 0, fixed) down to the bottom
+const NET_COLS = 16; // knots per ring
+const NET_SPRING = 70; // pull of each knot back to its rest position
+const NET_DAMP = 7;
+const NET_COUPLE = 45; // pull toward neighbouring knots, so a push ripples through the net
+const NET_PUSH_MARGIN = 1.04; // knots are pushed out to this × the ball radius
+const NET_DRAG = 2.2; // how strongly the net slows a ball passing through (per second)
+
+// A tapered net of knots joined in a diamond pattern (each knot ties to the two knots below it, odd
+// rings offset half a step), drawn as opaque line segments so depth testing puts the strands in
+// front of the ball over it and the ones behind it under it. Each knot is a damped spring: a ball
+// inside the net pushes knots out to its surface, and neighbour coupling spreads the ripple.
+function createNet(R, rimZ, color) {
+  const height = R * 1.5;
+  const bottomR = R * 0.5; // a touch narrower than the ball, so a make visibly stretches the bottom
+  const n = NET_RINGS * NET_COLS;
+  const rest = new Float32Array(n * 3);
+  const off = new Float32Array(n * 3);
+  const vel = new Float32Array(n * 3);
+  const idx = (i, j) => i * NET_COLS + ((j % NET_COLS) + NET_COLS) % NET_COLS;
+  for (let i = 0; i < NET_RINGS; i++) {
+    const f = i / (NET_RINGS - 1);
+    const r = R + (bottomR - R) * f * (2 - f) * 0.9 + (bottomR - R) * f * 0.1; // slight belly
+    const y = -height * f;
+    for (let j = 0; j < NET_COLS; j++) {
+      const a = ((j + (i % 2) * 0.5) / NET_COLS) * Math.PI * 2;
+      const k = idx(i, j) * 3;
+      rest[k] = Math.cos(a) * r;
+      rest[k + 1] = y;
+      rest[k + 2] = rimZ + Math.sin(a) * r;
+    }
+  }
+  // Segments: each knot to the two knots below it (diamond mesh)
+  const pairs = [];
+  for (let i = 0; i < NET_RINGS - 1; i++) {
+    for (let j = 0; j < NET_COLS; j++) {
+      const down = i % 2 === 0 ? [idx(i + 1, j - 1), idx(i + 1, j)] : [idx(i + 1, j), idx(i + 1, j + 1)];
+      for (const d of down) pairs.push(idx(i, j), d);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  const pos = new Float32Array(n * 3);
+  pos.set(rest);
+  const posAttr = new THREE.BufferAttribute(pos, 3);
+  posAttr.setUsage(THREE.DynamicDrawUsage);
+  geometry.setAttribute("position", posAttr);
+  geometry.setIndex(pairs);
+  const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color }));
+  lines.frustumCulled = false; // the net deforms beyond its rest bounds
+
+  // Neighbours for coupling: left/right on the ring, and the knots above and below
+  const nbr = [];
+  for (let i = 0; i < NET_RINGS; i++) {
+    for (let j = 0; j < NET_COLS; j++) {
+      const list = [idx(i, j - 1), idx(i, j + 1)];
+      if (i > 0) list.push(...(i % 2 === 1 ? [idx(i - 1, j), idx(i - 1, j + 1)] : [idx(i - 1, j - 1), idx(i - 1, j)]));
+      if (i < NET_RINGS - 1) list.push(...(i % 2 === 0 ? [idx(i + 1, j - 1), idx(i + 1, j)] : [idx(i + 1, j), idx(i + 1, j + 1)]));
+      nbr.push(list);
+    }
+  }
+
+  let settled = true;
+  function update(dt, bodies, ballRadius, origin) {
+    dt = Math.min(dt, 1 / 30);
+    // Balls inside or touching the net, in the hoop group's local space
+    const inside = [];
+    for (const b of bodies) {
+      const lx = b.position.x - origin.x;
+      const ly = b.position.y - origin.y;
+      const lz = b.position.z - origin.z;
+      if (ly > ballRadius * 1.2 || ly < -height - ballRadius) continue;
+      if (Math.hypot(lx, lz - rimZ) > R + ballRadius) continue;
+      inside.push({ b, x: lx, y: ly, z: lz });
+    }
+    if (!inside.length && settled) return;
+
+    const reach = ballRadius * NET_PUSH_MARGIN;
+    let energy = 0;
+    for (let k = NET_COLS; k < n; k++) {
+      // ring 0 hangs from the rim and stays put
+      const p = k * 3;
+      for (let c = 0; c < 3; c++) {
+        let avg = 0;
+        for (const q of nbr[k]) avg += off[q * 3 + c];
+        avg /= nbr[k].length;
+        const acc = -NET_SPRING * off[p + c] - NET_DAMP * vel[p + c] + NET_COUPLE * (avg - off[p + c]);
+        vel[p + c] += acc * dt;
+      }
+      for (let c = 0; c < 3; c++) off[p + c] += vel[p + c] * dt;
+
+      // Keep the knot outside every ball in the net: push it to the surface and give it the
+      // ball's motion, so the strands stretch around the ball and swing as it drops
+      for (const s of inside) {
+        const x = rest[p] + off[p] - s.x;
+        const y = rest[p + 1] + off[p + 1] - s.y;
+        const z = rest[p + 2] + off[p + 2] - s.z;
+        const d = Math.hypot(x, y, z);
+        if (d >= reach || d < 1e-5) continue;
+        const push = (reach - d) / d;
+        off[p] += x * push;
+        off[p + 1] += y * push;
+        off[p + 2] += z * push;
+        const v = s.b.velocity;
+        vel[p] = vel[p] * 0.5 + v.x * 0.5;
+        vel[p + 1] = vel[p + 1] * 0.5 + v.y * 0.5;
+        vel[p + 2] = vel[p + 2] * 0.5 + v.z * 0.5;
+      }
+      energy += Math.abs(off[p]) + Math.abs(off[p + 1]) + Math.abs(off[p + 2]);
+      pos[p] = rest[p] + off[p];
+      pos[p + 1] = rest[p + 1] + off[p + 1];
+      pos[p + 2] = rest[p + 2] + off[p + 2];
+    }
+    // The net slows a ball dropping through it
+    for (const s of inside) {
+      if (s.y > 0) continue;
+      const k = Math.exp(-NET_DRAG * dt);
+      s.b.velocity.x *= k;
+      s.b.velocity.z *= k;
+      if (s.b.velocity.y < 0) s.b.velocity.y *= Math.exp(-NET_DRAG * 0.6 * dt);
+    }
+    posAttr.needsUpdate = true;
+    settled = !inside.length && energy < 1e-3 * n;
+    if (settled) {
+      off.fill(0);
+      vel.fill(0);
+      pos.set(rest);
+    }
+  }
+
+  return { lines, update };
+}
+
 /**
  * @param {object} o
  * @param {THREE.Scene} o.scene
@@ -122,13 +255,9 @@ export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, 
   bracket.position.set(0, 0, boardFaceZ + bracketLen / 2);
   group.add(bracket);
 
-  // Net: an open, tapered wireframe cylinder reads as cord at this size
-  const net = new THREE.Mesh(
-    new THREE.CylinderGeometry(R + RIM_TUBE * 0.5, R * 0.55, R * 1.5, 12, 5, true),
-    new THREE.MeshBasicMaterial({ color: colors.net, wireframe: true, transparent: true, opacity: 0.55 }),
-  );
-  net.position.set(0, -R * 0.75, rimZ);
-  group.add(net);
+  // Net: a diamond-knotted cord net that the ball pushes through (see createNet)
+  const net = createNet(R, rimZ, colors.net);
+  group.add(net.lines);
 
   scene.add(group);
 
@@ -184,5 +313,10 @@ export function createHoop({ scene, world, wallZ, y, ballRadius, paperMaterial, 
   arm(false);
 
   // topOffset: backboard top edge above the rim; faceZ: z of the backboard's front face
-  return { group, rimRadius: R, center, topOffset: boardY + bh / 2, faceZ: boardFaceZ, rimBodies, place, setY, arm };
+  // Per frame: deform the net around any balls inside it (and slow them a little as they pass)
+  function updateNet(dt, bodies, ballRadius) {
+    net.update(dt, bodies, ballRadius, group.position);
+  }
+
+  return { group, rimRadius: R, center, topOffset: boardY + bh / 2, faceZ: boardFaceZ, rimBodies, place, setY, arm, updateNet };
 }
